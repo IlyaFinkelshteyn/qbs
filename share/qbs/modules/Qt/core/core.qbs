@@ -35,6 +35,21 @@ Module {
     property string generatedFilesDir: 'GeneratedFiles/' + product.name // ### TODO: changing this property does not change the path in the rule ATM.
     property string qmFilesDir: product.destinationDirectory
 
+    // ### broken
+    // return getQtLibraryFilePath directly; version + buildVariant are undefined
+    // return through an anonymous function; the function source code gets returned as a string
+    property path moduleLibFilePath: {
+        return function() {
+             return QtFunctions.getQtLibraryFilePath('Core' + libInfix, qtcore, qbs, cpp);
+        }
+    }
+
+    property path pluginLibFilePath: {
+        return function (pluginName, pluginClass) {
+            return QtFunctions.getQtPluginFilePath(pluginName, pluginClass, qtcore, qbs, cpp);
+        }
+    }
+
     // private properties
     property string libraryInfix: cpp.debugInformation ? 'd' : ''
 
@@ -119,6 +134,8 @@ Module {
             throw "Qt.core.libPath not set. Set Qt.core.libPath in your profile.";
         if (!mkspecPath)
             throw "Qt.core.mkspecPath not set. Set Qt.core.mkspecPath in your profile.";
+        if (!staticBuild && !pluginPath)
+            throw "Qt.core.pluginPath not set. Set Qt.core.pluginPath in your profile.";
         if (!version)
             throw "Qt.core.version not set. Set Qt.core.version in your profile.";
     }

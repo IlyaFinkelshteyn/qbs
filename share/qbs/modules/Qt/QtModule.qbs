@@ -16,6 +16,8 @@ Module {
     property string internalLibraryName: QtFunctions.getQtLibraryName(qtModuleName + qtLibInfix, Qt.core, qbs)
     property string qtVersion: Qt.core.version
 
+    property path moduleLibFilePath: QtFunctions.getQtLibraryFilePath(qtModuleName + qtLibInfix, Qt.core, qbs, cpp)
+
     Properties {
         condition: qtModuleName != undefined
 
