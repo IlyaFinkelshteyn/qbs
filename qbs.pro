@@ -34,6 +34,7 @@ src_app.depends = lib
 SUBDIRS += \
     lib\
     src_app\
+    src/3rdparty\
     src/plugins\
     static.pro\
     tests

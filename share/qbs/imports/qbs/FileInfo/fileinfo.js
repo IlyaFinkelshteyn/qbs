@@ -25,6 +25,11 @@ function baseName(fph) {
     return fn.split('.')[0];
 }
 
+function extension(fph) {
+    var fn = fileName(fph);
+    return fn.split('.')[1];
+}
+
 function completeBaseName(fph) {
     var fn = fileName(fph);
     var last = fn.lastIndexOf(".");
