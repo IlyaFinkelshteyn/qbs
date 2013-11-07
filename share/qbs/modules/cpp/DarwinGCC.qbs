@@ -289,8 +289,64 @@ UnixGCC {
     }
 
     Rule {
+        inputs: ["bundle_resource"]
+
+        Artifact {
+            fileName: {
+                var destination = input.moduleProperty("bundle", "destination");
+                var subpath = input.moduleProperty("bundle", "subpath");
+                var localization = input.moduleProperty("bundle", "localization");
+
+                // Determine the path within the bundle corresponding to the destination keyword
+                if (destination === "Wrapper") {
+                    destination = BundleTools.wrapperName(product);
+                } else if (destination === "Executables") {
+                    destination = BundleTools.executablesFolderPath(product, localization, product.version);
+                } else if (destination === "Resources") {
+                    if (localization !== undefined) {
+                        destination = BundleTools.localizedResourcesFolderPath(product, localization, product.version);
+                    } else {
+                        destination = BundleTools.unlocalizedResourcesFolderPath(product, product.version);
+                    }
+                //} else if (destination === "JavaResources") {
+                //    //destination = BundleTools.javaResourcesFolderPath(product, localization, product.version);
+                } else if (destination === "Frameworks") {
+                    destination = BundleTools.frameworksFolderPath(product, product.version);
+                } else if (destination === "SharedFrameworks") {
+                    destination = BundleTools.sharedFrameworksFolderPath(product, product.version);
+                } else if (destination === "SharedSupport") {
+                    destination = BundleTools.sharedSupportFolderPath(product, product.version);
+                } else if (destination === "PlugIns") {
+                    destination = BundleTools.pluginsFolderPath(product, product.version);
+                //} else if (destination === "XPCServices") {
+                //    destination = BundleTools.xpcServicesFolderPath(product, localization, product.version);
+                } else {
+                    throw("bundle.destination must be in " +
+                          "[Wrapper, Executables, Resources, JavaResources, Frameworks, " +
+                          "SharedFrameworks, SharedSupport, PlugIns, XPCServices]");
+                }
+
+                return FileInfo.joinPaths(product.destinationDirectory, destination, subpath, FileInfo.fileName(input.fileName));
+            }
+            fileTags: ["bundle_content"]
+        }
+
+        prepare: {
+            var cmd = new JavaScriptCommand();
+            cmd.source = input.fileName;
+            cmd.destination = output.fileName;
+            cmd.description = "copying " + FileInfo.fileName(input.fileName) + " to bundle";
+            cmd.sourceCode = function() {
+                File.copy(source, destination);
+            };
+            return cmd;
+        }
+    }
+
+    Rule {
         multiplex: true
-        inputs: ["application", "infoplist", "pkginfo", "dsym", "compiled_nib", "resourcerules", "ipa"]
+        inputs: ["application", "infoplist", "pkginfo", "dsym", "compiled_nib", "bundle_content",
+                 "resourcerules", "ipa"]
 
         Artifact {
             fileName: product.destinationDirectory + "/" + BundleTools.wrapperName(product)
@@ -308,7 +364,7 @@ UnixGCC {
 
     Rule {
         multiplex: true
-        inputs: ["dynamiclibrary", "infoplist", "pkginfo", "dsym", "compiled_nib"]
+        inputs: ["dynamiclibrary", "infoplist", "pkginfo", "dsym", "compiled_nib", "bundle_content"]
 
         Artifact {
             fileName: product.destinationDirectory + "/" + BundleTools.wrapperName(product)
