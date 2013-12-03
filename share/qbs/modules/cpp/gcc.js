@@ -1,123 +1,104 @@
-function linkerFlags(product, inputs)
+function prepareCompiler(project, product, inputs, outputs, input, output)
 {
-    var libraryPaths = ModUtils.moduleProperties(product, 'libraryPaths');
-    var dynamicLibraries = ModUtils.moduleProperties(product, "dynamicLibraries");
-    var staticLibraries = ModUtils.modulePropertiesFromArtifacts(product, inputs.staticlibrary, 'cpp', 'staticLibraries');
-    var frameworkPaths = ModUtils.moduleProperties(product, 'frameworkPaths');
-    var systemFrameworkPaths = ModUtils.moduleProperties(product, 'systemFrameworkPaths');
-    var frameworks = ModUtils.moduleProperties(product, 'frameworks');
-    var weakFrameworks = ModUtils.moduleProperties(product, 'weakFrameworks');
-    var rpaths = ModUtils.moduleProperties(product, 'rpaths');
-    var args = [], i, prefix, suffix, suffixes;
+    var i, c;
 
-    if (rpaths && rpaths.length)
-        args.push('-Wl,-rpath,' + rpaths.join(",-rpath,"));
+    // Determine which C-language we're compiling
+    var tag = ModUtils.fileTagForTargetLanguage(input.fileTags.concat(output.fileTags));
+    if (!["c", "cpp", "objc", "objcpp", "asm", "asm_cpp"].contains(tag))
+        throw ("unsupported source language: " + tag);
 
-    // Add filenames of internal library dependencies to the lists
-    for (i in inputs.staticlibrary)
-        staticLibraries.unshift(inputs.staticlibrary[i].fileName);
-    for (i in inputs.dynamiclibrary)
-        dynamicLibraries.unshift(inputs.dynamiclibrary[i].fileName);
-    for (i in inputs.frameworkbundle)
-        frameworks.unshift(inputs.frameworkbundle[i].fileName);
+    // Whether we're compiling a precompiled header or normal source file
+    var pchOutput = outputs[tag + "_pch"] ? outputs[tag + "_pch"][0] : undefined;
 
-    // Flags for library search paths
-    if (libraryPaths)
-        args = args.concat(libraryPaths.map(function(path) { return '-L' + path }));
-    if (frameworkPaths)
-        args = args.concat(frameworkPaths.map(function(path) { return '-F' + path }));
-    if (systemFrameworkPaths)
-        args = args.concat(systemFrameworkPaths.map(function(path) { return '-iframework' + path }));
-
-    prefix = ModUtils.moduleProperty(product, "staticLibraryPrefix");
-    suffixes = ModUtils.moduleProperty(product, "supportedStaticLibrarySuffixes");
-    for (i in staticLibraries) {
-        if (isLibraryFileName(product, FileInfo.fileName(staticLibraries[i]), prefix, suffixes,
-                              false)) {
-            args.push(staticLibraries[i]);
-        } else {
-            args.push('-l' + staticLibraries[i]);
-        }
-    }
-
-    prefix = ModUtils.moduleProperty(product, "dynamicLibraryPrefix");
-    suffix = ModUtils.moduleProperty(product, "dynamicLibrarySuffix");
-    for (i in dynamicLibraries) {
-        if (isLibraryFileName(product, FileInfo.fileName(dynamicLibraries[i]), prefix, [suffix],
-                              true)) {
-            args.push(dynamicLibraries[i]);
-        } else {
-            args.push('-l' + dynamicLibraries[i]);
-        }
-    }
-
-    suffix = ".framework";
-    for (i in frameworks) {
-        if (frameworks[i].slice(-suffix.length) === suffix)
-            args.push(frameworks[i] + "/" + FileInfo.fileName(frameworks[i]).slice(0, -suffix.length));
-        else
-            args = args.concat(['-framework', frameworks[i]]);
-    }
-
-    for (i in weakFrameworks) {
-        if (weakFrameworks[i].slice(-suffix.length) === suffix)
-            args = args.concat(['-weak_library', weakFrameworks[i] + "/" + FileInfo.fileName(weakFrameworks[i]).slice(0, -suffix.length)]);
-        else
-            args = args.concat(['-weak_framework', weakFrameworks[i]]);
-    }
-
-    return args;
-}
-
-// Returns whether the string looks like a library filename
-function isLibraryFileName(product, fileName, prefix, suffixes, isShared)
-{
-    var suffix, i;
-    var os = product.moduleProperty("qbs", "targetOS");
-    for (i = 0; i < suffixes.length; ++i) {
-        suffix = suffixes[i];
-        if (isShared && os.contains("unix") && !os.contains("darwin"))
-            suffix += "(\\.[0-9]+){0,3}";
-        if (fileName.match("^" + prefix + ".+?\\" + suffix + "$"))
-            return true;
-    }
-    return false;
-}
-
-// for compiler AND linker
-function configFlags(config) {
     var args = [];
 
-    var arch = ModUtils.moduleProperty(config, "architecture")
-    if (arch === 'x86_64')
-        args.push('-m64');
-    else if (arch === 'x86')
-        args.push('-m32');
+    var arch = ModUtils.moduleProperty(product, "architecture");
+    if (product.moduleProperty("qbs", "toolchain").contains("llvm")) {
+        args.push("-arch");
+        args.push(architectureName(arch));
+    } else {
+        // Specifically for x86/x86_64
+        // TODO: (bool)use32bitPointers => -mx32?
+        if (arch === "x86_64")
+            args.push('-m64');
+        else if (arch === "x86")
+            args.push('-m32');
+    }
 
-    if (ModUtils.moduleProperty(config, "debugInformation"))
+    var stdlib = ModUtils.moduleProperty(product, "cxxStandardLibrary");
+    if (stdlib)
+        args.push("-stdlib=" + stdlib);
+
+    args.push('-pipe');
+
+    if (ModUtils.moduleProperty(input, "debugInformation"))
         args.push('-g');
-    var opt = ModUtils.moduleProperty(config, "optimization")
+
+    var opt = ModUtils.moduleProperty(input, "optimization")
     if (opt === 'fast')
         args.push('-O2');
     if (opt === 'small')
         args.push('-Os');
 
-    var warnings = ModUtils.moduleProperty(config, "warningLevel")
+    var warnings = ModUtils.moduleProperty(input, "warningLevel")
     if (warnings === 'none')
         args.push('-w');
     if (warnings === 'all') {
         args.push('-Wall');
         args.push('-Wextra');
     }
-    if (ModUtils.moduleProperty(config, "treatWarningsAsErrors"))
+    if (ModUtils.moduleProperty(input, "treatWarningsAsErrors"))
         args.push('-Werror');
 
-    return args;
-}
+    var visibility = ModUtils.moduleProperty(product, 'visibility');
+    if (!product.type.contains('staticlibrary')
+            && !product.moduleProperty("qbs", "toolchain").contains("mingw")) {
+        if (visibility === 'hidden')
+            args.push('-fvisibility=hidden');
+        if (visibility === 'hiddenInlines')
+            args.push('-fvisibility-inlines-hidden');
+        if (visibility === 'default')
+            args.push('-fvisibility=default')
+    }
 
-function removePrefixAndSuffix(str, prefix, suffix)
-{
-    return str.substr(prefix.length, str.length - prefix.length - suffix.length);
+    var prefixHeaders = ModUtils.moduleProperty(product, "prefixHeaders");
+    for (i in prefixHeaders) {
+        args.push('-include');
+        args.push(prefixHeaders[i]);
+    }
+
+    args = args.concat(ModUtils.moduleProperties(input, 'platformCommonCompilerFlags'));
+
+    args.push('-x');
+    args.push(Gcc.languageName(tag) + (pchOutput ? '-header' : ''));
+    args = args.concat(ModUtils.moduleProperties(input, 'platformFlags', tag),
+                       ModUtils.moduleProperties(input, 'flags', tag));
+
+    if (!pchOutput && ModUtils.moduleProperty(product, 'precompiledHeader', tag)) {
+        var pchFilePath = FileInfo.joinPaths(
+            ModUtils.moduleProperty(product, "precompiledHeaderDir"),
+            product.name + "_" + tag);
+        args.push('-include', pchFilePath);
+    }
+
+    args = args.concat(ModUtils.moduleProperties(input, 'commonCompilerFlags'));
+    args = args.concat(additionalCompilerFlags(product, input, output));
+
+    var compilerPath = ModUtils.moduleProperty(product, "compilerPath");
+    var wrapperArgs = ModUtils.moduleProperty(product, "compilerWrapper");
+    if (wrapperArgs && wrapperArgs.length > 0) {
+        args.unshift(compilerPath);
+        compilerPath = wrapperArgs.shift();
+        args = wrapperArgs.concat(args);
+    }
+
+    var cmd = new Command(compilerPath, args);
+    cmd.description = (pchOutput ? 'pre' : '') + 'compiling ' + FileInfo.fileName(input.fileName);
+    if (pchOutput)
+        cmd.description += ' (' + tag + ')';
+    cmd.highlight = "compiler";
+    cmd.responseFileUsagePrefix = '@';
+    return cmd;
 }
 
 // ### what we actually need here is something like product.usedFileTags
@@ -194,16 +175,6 @@ function additionalCompilerFlags(product, input, output)
         }
     }
 
-    args.push('-c');
-    args.push(input.fileName);
-    args.push('-o');
-    args.push(output.fileName);
-    return args
-}
-
-function additionalCompilerAndLinkerFlags(product) {
-    var args = []
-
     var minimumOsxVersion = ModUtils.moduleProperty(product, "minimumOsxVersion");
     if (minimumOsxVersion && product.moduleProperty("qbs", "targetOS").contains("osx"))
         args.push('-mmacosx-version-min=' + minimumOsxVersion);
@@ -216,7 +187,133 @@ function additionalCompilerAndLinkerFlags(product) {
             args.push('-miphoneos-version-min=' + minimumiOSVersion);
     }
 
-    return args
+    args.push('-c');
+    args.push(input.fileName);
+    args.push('-o');
+    args.push(output.fileName);
+    return args;
+}
+
+function linkerFlags(product, inputs)
+{
+    var libraryPaths = ModUtils.moduleProperties(product, 'libraryPaths');
+    var dynamicLibraries = ModUtils.moduleProperties(product, "dynamicLibraries");
+    var staticLibraries = ModUtils.modulePropertiesFromArtifacts(product, inputs.staticlibrary, 'cpp', 'staticLibraries');
+    var frameworkPaths = ModUtils.moduleProperties(product, 'frameworkPaths');
+    var systemFrameworkPaths = ModUtils.moduleProperties(product, 'systemFrameworkPaths');
+    var frameworks = ModUtils.moduleProperties(product, 'frameworks');
+    var weakFrameworks = ModUtils.moduleProperties(product, 'weakFrameworks');
+    var rpaths = ModUtils.moduleProperties(product, 'rpaths');
+    var args = [], i, prefix, suffix, suffixes;
+
+    var arch = ModUtils.moduleProperty(product, "architecture");
+    if (product.moduleProperty("qbs", "toolchain").contains("llvm")) {
+        args.push("-arch");
+        args.push(arch === "x86" ? "i386" : arch);
+    }
+
+    for (i in rpaths) {
+        args.push("-rpath");
+        args.push(rpaths[i]);
+    }
+
+    // Add filenames of internal library dependencies to the lists
+    for (i in inputs.staticlibrary)
+        staticLibraries.unshift(inputs.staticlibrary[i].fileName);
+    for (i in inputs.dynamiclibrary)
+        dynamicLibraries.unshift(inputs.dynamiclibrary[i].fileName);
+    for (i in inputs.frameworkbundle)
+        frameworks.unshift(inputs.frameworkbundle[i].fileName);
+
+    // Flags for library search paths
+    if (libraryPaths)
+        args = args.concat(libraryPaths.map(function(path) { return '-L' + path }));
+    if (frameworkPaths)
+        args = args.concat(frameworkPaths.map(function(path) { return '-F' + path }));
+    if (systemFrameworkPaths)
+        args = args.concat(systemFrameworkPaths.map(function(path) { return '-iframework' + path }));
+
+    prefix = ModUtils.moduleProperty(product, "staticLibraryPrefix");
+    suffixes = ModUtils.moduleProperty(product, "supportedStaticLibrarySuffixes");
+    for (i in staticLibraries) {
+        if (isLibraryFileName(product, FileInfo.fileName(staticLibraries[i]), prefix, suffixes,
+                              false)) {
+            args.push(staticLibraries[i]);
+        } else {
+            args.push('-l' + staticLibraries[i]);
+        }
+    }
+
+    prefix = ModUtils.moduleProperty(product, "dynamicLibraryPrefix");
+    suffix = ModUtils.moduleProperty(product, "dynamicLibrarySuffix");
+    for (i in dynamicLibraries) {
+        if (isLibraryFileName(product, FileInfo.fileName(dynamicLibraries[i]), prefix, [suffix],
+                              true)) {
+            args.push(dynamicLibraries[i]);
+        } else {
+            args.push('-l' + dynamicLibraries[i]);
+        }
+    }
+
+    args.push("-lc");
+    args.push("-lm");
+    args.push("-lcrt1.o");
+
+    var stdlib = ModUtils.moduleProperty(product, "cxxStandardLibrary");
+    if (stdlib)
+        args.push("-l" + removePrefixAndSuffix(stdlib, "lib", ""));
+
+    suffix = ".framework";
+    for (i in frameworks) {
+        if (frameworks[i].slice(-suffix.length) === suffix)
+            args.push(frameworks[i] + "/" + FileInfo.fileName(frameworks[i]).slice(0, -suffix.length));
+        else
+            args = args.concat(['-framework', frameworks[i]]);
+    }
+
+    for (i in weakFrameworks) {
+        if (weakFrameworks[i].slice(-suffix.length) === suffix)
+            args = args.concat(['-weak_library', weakFrameworks[i] + "/" + FileInfo.fileName(weakFrameworks[i]).slice(0, -suffix.length)]);
+        else
+            args = args.concat(['-weak_framework', weakFrameworks[i]]);
+    }
+
+    var minimumOsxVersion = ModUtils.moduleProperty(product, "minimumOsxVersion");
+    if (minimumOsxVersion && product.moduleProperty("qbs", "targetOS").contains("osx")) {
+        args.push("-macosx_version_min");
+        args.push(minimumOsxVersion);
+    }
+
+    var minimumiOSVersion = ModUtils.moduleProperty(product, "minimumIosVersion");
+    if (minimumiOSVersion && product.moduleProperty("qbs", "targetOS").contains("ios")) {
+        if (product.moduleProperty("qbs", "targetOS").contains("ios-simulator"))
+            args.push("-ios-simulator-version-min");
+        else
+            args.push("-iphoneos-version-min");
+        args.push(minimumiOSVersion);
+    }
+
+    return args;
+}
+
+// Returns whether the string looks like a library filename
+function isLibraryFileName(product, fileName, prefix, suffixes, isShared)
+{
+    var suffix, i;
+    var os = product.moduleProperty("qbs", "targetOS");
+    for (i = 0; i < suffixes.length; ++i) {
+        suffix = suffixes[i];
+        if (isShared && os.contains("unix") && !os.contains("darwin"))
+            suffix += "(\\.[0-9]+){0,3}";
+        if (fileName.match("^" + prefix + ".+?\\" + suffix + "$"))
+            return true;
+    }
+    return false;
+}
+
+function removePrefixAndSuffix(str, prefix, suffix)
+{
+    return str.substr(prefix.length, str.length - prefix.length - suffix.length);
 }
 
 function majorVersion(version, defaultValue)
@@ -238,6 +335,19 @@ function soname(product, outputFilePath)
     return outputFileName;
 }
 
+// Returns the GCC/LLVM architecture name for -arch
+function architectureName(arch)
+{
+    if (arch === "x86")
+        return "i386";
+
+    // If the arch is not one known to us, print a warning
+    if (!["x86_64", "ia64", "ppc", "ppc64"].contains(arch))
+        print("WARNING: Architecture '" + arch + "' is not known, compilation may fail.");
+
+    return arch;
+}
+
 // Returns the GCC language name equivalent to fileTag, accepted by the -x argument
 function languageName(fileTag)
 {
@@ -253,71 +363,4 @@ function languageName(fileTag)
         return 'assembler';
     else if (fileTag === 'asm_cpp')
         return 'assembler-with-cpp';
-}
-
-function prepareCompiler(project, product, inputs, outputs, input, output)
-{
-    var i, c;
-
-    // Determine which C-language we're compiling
-    var tag = ModUtils.fileTagForTargetLanguage(input.fileTags.concat(output.fileTags));
-    if (!["c", "cpp", "objc", "objcpp", "asm", "asm_cpp"].contains(tag))
-        throw ("unsupported source language: " + tag);
-
-    // Whether we're compiling a precompiled header or normal source file
-    var pchOutput = outputs[tag + "_pch"] ? outputs[tag + "_pch"][0] : undefined;
-
-    var args = configFlags(input);
-    args.push('-pipe');
-
-    var visibility = ModUtils.moduleProperty(product, 'visibility');
-    if (!product.type.contains('staticlibrary')
-            && !product.moduleProperty("qbs", "toolchain").contains("mingw")) {
-        if (visibility === 'hidden')
-            args.push('-fvisibility=hidden');
-        if (visibility === 'hiddenInlines')
-            args.push('-fvisibility-inlines-hidden');
-        if (visibility === 'default')
-            args.push('-fvisibility=default')
-    }
-
-    var prefixHeaders = ModUtils.moduleProperty(product, "prefixHeaders");
-    for (i in prefixHeaders) {
-        args.push('-include');
-        args.push(prefixHeaders[i]);
-    }
-
-    args = args.concat(ModUtils.moduleProperties(input, 'platformCommonCompilerFlags'));
-
-    args.push('-x');
-    args.push(Gcc.languageName(tag) + (pchOutput ? '-header' : ''));
-    args = args.concat(ModUtils.moduleProperties(input, 'platformFlags', tag),
-                       ModUtils.moduleProperties(input, 'flags', tag));
-
-    if (!pchOutput && ModUtils.moduleProperty(product, 'precompiledHeader', tag)) {
-        var pchFilePath = FileInfo.joinPaths(
-            ModUtils.moduleProperty(product, "precompiledHeaderDir"),
-            product.name + "_" + tag);
-        args.push('-include', pchFilePath);
-    }
-
-    args = args.concat(ModUtils.moduleProperties(input, 'commonCompilerFlags'));
-    args = args.concat(additionalCompilerFlags(product, input, output));
-    args = args.concat(additionalCompilerAndLinkerFlags(product));
-
-    var compilerPath = ModUtils.moduleProperty(product, "compilerPath");
-    var wrapperArgs = ModUtils.moduleProperty(product, "compilerWrapper");
-    if (wrapperArgs && wrapperArgs.length > 0) {
-        args.unshift(compilerPath);
-        compilerPath = wrapperArgs.shift();
-        args = wrapperArgs.concat(args);
-    }
-
-    var cmd = new Command(compilerPath, args);
-    cmd.description = (pchOutput ? 'pre' : '') + 'compiling ' + FileInfo.fileName(input.fileName);
-    if (pchOutput)
-        cmd.description += ' (' + tag + ')';
-    cmd.highlight = "compiler";
-    cmd.responseFileUsagePrefix = '@';
-    return cmd;
 }

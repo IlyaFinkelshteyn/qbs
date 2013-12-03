@@ -32,8 +32,8 @@ Module {
                         version of Windows that the product should run on. Defines WINVER, \
                         _WIN32_WINNT, and _WIN32_WINDOWS, and applies a version number to the \
                         linker flags /SUBSYSTEM and /OSVERSION for MSVC or \
-                        -Wl,--major-subsystem-version, -Wl,--minor-subsystem-version, \
-                        -Wl,--major-os-version and -Wl,--minor-os-version for MinGW. \
+                        --major-subsystem-version, --minor-subsystem-version, \
+                        --major-os-version and --minor-os-version for MinGW. \
                         If undefined, compiler defaults will be used."
     }
 
@@ -163,6 +163,13 @@ Module {
     property stringList platformObjcFlags
     property stringList platformObjcxxFlags
     property stringList platformLinkerFlags
+
+    property string cxxStandardLibrary
+    PropertyOptions {
+        name: "cxxStandardLibrary"
+        description: "C++ standard library to use"
+        allowedValues: ["libstdc++", "libc++"]
+    }
 
     // OS X and iOS properties
     property path infoPlistFile

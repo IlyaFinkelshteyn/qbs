@@ -12,8 +12,9 @@ CppModule {
     property stringList transitiveSOs
     property string toolchainPrefix
     property path toolchainInstallPath
+    cxxStandardLibrary: "libstdc++"
     compilerName: 'g++'
-    linkerName: compilerName
+    linkerName: 'ld'
     property string archiverName: 'ar'
     property path sysroot: qbs.sysroot
     property path platformPath
@@ -103,22 +104,23 @@ CppModule {
             var linkerFlags = ModUtils.moduleProperties(product, 'linkerFlags');
             var commands = [];
             var i;
-            var args = Gcc.configFlags(product);
-            args.push('-shared');
+            var args = [];
+            args.push(product.moduleProperty("qbs", "targetOS").contains("darwin")
+                      ? "-dynamic" : "-shared");
             if (product.moduleProperty("qbs", "targetOS").contains('linux')) {
                 args = args.concat([
-                    '-Wl,--hash-style=gnu',
-                    '-Wl,--as-needed',
-                    '-Wl,--allow-shlib-undefined',
-                    '-Wl,--no-undefined',
-                    '-Wl,-soname=' + Gcc.soname(product, libFilePath)
+                    '--hash-style=gnu',
+                    '--as-needed',
+                    '--allow-shlib-undefined',
+                    '--no-undefined',
+                    '-soname=' + Gcc.soname(product, libFilePath)
                 ]);
             } else if (product.moduleProperty("qbs", "targetOS").contains('darwin')) {
                 var installNamePrefix = product.moduleProperty("cpp", "installNamePrefix");
                 if (installNamePrefix !== undefined)
-                    args.push("-Wl,-install_name,"
+                    args.push("-install_name,"
                               + installNamePrefix + FileInfo.fileName(libFilePath));
-                args.push("-Wl,-headerpad_max_install_names");
+                args.push("-headerpad_max_install_names");
             }
             args = args.concat(platformLinkerFlags);
             for (i in linkerFlags)
@@ -128,7 +130,7 @@ CppModule {
             var sysroot = ModUtils.moduleProperty(product, "sysroot")
             if (sysroot) {
                 if (product.moduleProperty("qbs", "targetOS").contains('darwin'))
-                    args.push('-isysroot', sysroot);
+                    args.push('-syslibroot', sysroot);
                 else
                     args.push('--sysroot=' + sysroot);
             }
@@ -136,7 +138,6 @@ CppModule {
             args.push('-o');
             args.push(libFilePath);
             args = args.concat(Gcc.linkerFlags(product, inputs));
-            args = args.concat(Gcc.additionalCompilerAndLinkerFlags(product));
             var cmd = new Command(ModUtils.moduleProperty(product, "linkerPath"), args);
             cmd.description = 'linking ' + FileInfo.fileName(libFilePath);
             cmd.highlight = 'linker';
@@ -214,13 +215,13 @@ CppModule {
         prepare: {
             var platformLinkerFlags = ModUtils.moduleProperties(product, 'platformLinkerFlags');
             var linkerFlags = ModUtils.moduleProperties(product, 'linkerFlags');
-            var args = Gcc.configFlags(product);
+            var args = [];
             for (var i in inputs.obj)
                 args.push(inputs.obj[i].fileName)
             var sysroot = ModUtils.moduleProperty(product, "sysroot")
             if (sysroot) {
                 if (product.moduleProperty("qbs", "targetOS").contains('darwin'))
-                    args.push('-isysroot', sysroot)
+                    args.push('-syslibroot', sysroot)
                 else
                     args.push('--sysroot=' + sysroot)
             }
@@ -230,9 +231,9 @@ CppModule {
             if (product.moduleProperty("qbs", "toolchain").contains("mingw")) {
                 if (product.consoleApplication !== undefined)
                     if (product.consoleApplication)
-                        args.push("-Wl,-subsystem,console");
+                        args.push("-subsystem,console");
                     else
-                        args.push("-Wl,-subsystem,windows");
+                        args.push("-subsystem,windows");
 
                 var minimumWindowsVersion = ModUtils.moduleProperty(product, "minimumWindowsVersion");
                 if (minimumWindowsVersion) {
@@ -242,10 +243,10 @@ CppModule {
                         var minor = subsystemVersion.split('.')[1];
 
                         // http://sourceware.org/binutils/docs/ld/Options.html
-                        args.push("-Wl,--major-subsystem-version," + major);
-                        args.push("-Wl,--minor-subsystem-version," + minor);
-                        args.push("-Wl,--major-os-version," + major);
-                        args.push("-Wl,--minor-os-version," + minor);
+                        args.push("--major-subsystem-version," + major);
+                        args.push("--minor-subsystem-version," + minor);
+                        args.push("--major-os-version," + major);
+                        args.push("--minor-os-version," + minor);
                     } else {
                         print('WARNING: Unknown Windows version "' + minimumWindowsVersion + '"');
                     }
@@ -258,12 +259,11 @@ CppModule {
                 var transitiveSOs = ModUtils.modulePropertiesFromArtifacts(product, inputs.dynamiclibrary, 'cpp', 'transitiveSOs')
                 var uniqueSOs = ModUtils.uniqueConcat([], transitiveSOs)
                 for (i in uniqueSOs) {
-                    args.push("-Wl,-rpath-link=" + FileInfo.path(uniqueSOs[i]))
+                    args.push("-rpath-link=" + FileInfo.path(uniqueSOs[i]))
                 }
             }
 
             args = args.concat(Gcc.linkerFlags(product, inputs));
-            args = args.concat(Gcc.additionalCompilerAndLinkerFlags(product));
             var cmd = new Command(ModUtils.moduleProperty(product, "linkerPath"), args);
             cmd.description = 'linking ' + FileInfo.fileName(output.fileName);
             cmd.highlight = 'linker'

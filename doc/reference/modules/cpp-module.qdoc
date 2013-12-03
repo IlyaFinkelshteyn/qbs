@@ -362,6 +362,17 @@
     List of file suffixes this toolchain's linker accepts as input. For example, for MinGW this list
     should be \c{[".a", ".lib"]}.
 
+    \section2 cxxStandardLibrary
+
+    \table
+    \row    \li \b{Type:}            \li \c{string}
+    \row    \li \b{Possible Values:} \li \c{"libstdc++"}, \c{"libc++"}
+    \row    \li \b{Default:}         \li \c{undefined}
+    \endtable
+
+    C++ standard library to use. Possible values are compiler-dependent.
+    \c{undefined} indicates that the compiler's default standard library will be used.
+
 
 
     \section1 Properties Specific to iOS and OS X
@@ -548,7 +559,7 @@
     A version number in the format [major].[minor] indicating the earliest version of Windows that
     the product should run on. Defines WINVER, _WIN32_WINNT, and _WIN32_WINDOWS, and applies a
     version number to the linker flags /SUBSYSTEM and /OSVERSION for MSVC or
-    -Wl,--major-subsystem-version, -Wl,--minor-subsystem-version, -Wl,--major-os-version and
-    -Wl,--minor-os-version for MinGW.
+    --major-subsystem-version, --minor-subsystem-version, --major-os-version and
+    --minor-os-version for MinGW.
     If undefined, compiler defaults will be used.
 */
