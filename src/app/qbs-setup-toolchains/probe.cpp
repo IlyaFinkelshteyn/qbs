@@ -222,6 +222,56 @@ static void mingwProbe(Settings *settings, QList<Profile> &profiles)
     }
 }
 
+static Profile createDmdProfile(const QString &_compilerFilePath, Settings *settings,
+                                const QStringList &toolchainTypes,
+                                const QString &profileName,
+                                const QString &architecture)
+{
+    const QFileInfo cfi(_compilerFilePath);
+    const QString compilerFilePath = cfi.absolutePath() + QLatin1Char('/') + cfi.fileName();
+
+    Profile profile(profileName, settings);
+    profile.removeProfile();
+
+    profile.setValue(QLatin1String("d.toolchainInstallPath"), cfi.absolutePath());
+    profile.setValue(QLatin1String("d.compilerName"), cfi.fileName());
+    profile.setValue(QLatin1String("qbs.toolchain"), toolchainTypes);
+    profile.setValue(QLatin1String("qbs.architecture"),
+                     HostOsInfo::canonicalArchitecture(architecture));
+    profile.setValue(QLatin1String("qbs.endianness"), HostOsInfo::defaultEndianness("x86"));
+
+    qStdout << Tr::tr("Profile '%1' created for '%2'.").arg(profile.name(), compilerFilePath)
+            << endl;
+    return profile;
+}
+
+static void dmdProbe(Settings *settings, QList<Profile> &profiles)
+{
+    qStdout << Tr::tr("Trying to detect dmd...") << endl;
+
+    const QString compilerFilePath = findExecutable("dmd");
+    if (!QFileInfo(compilerFilePath).exists()) {
+        qStderr << Tr::tr("dmd not found.") << endl;
+        return;
+    }
+    const QString profileName = QFileInfo(compilerFilePath).completeBaseName();
+    const QStringList toolchainTypes = QStringList() << QLatin1String("dmd");
+
+    QString architecture;
+    if (HostOsInfo::isAnyUnixHost())
+        architecture = qsystem("uname", QStringList() << QLatin1String("-m")).trimmed();
+    else
+        architecture = "x86";
+    architecture = HostOsInfo::canonicalArchitecture(architecture);
+    const QString additionalArchitecture = architecture == "x86" ? "x86_64" : "x86";
+
+    profiles << createDmdProfile(compilerFilePath, settings, toolchainTypes,
+                                 profileName, architecture);
+    profiles << createDmdProfile(compilerFilePath, settings, toolchainTypes,
+                                 profileName + "-" + additionalArchitecture,
+                                 additionalArchitecture);
+}
+
 void probe(Settings *settings)
 {
     QList<Profile> profiles;
@@ -237,6 +287,7 @@ void probe(Settings *settings)
     }
 
     mingwProbe(settings, profiles);
+    dmdProbe(settings, profiles);
 
     if (profiles.isEmpty()) {
         qStderr << Tr::tr("Could not detect any toolchains. No profile created.") << endl;
