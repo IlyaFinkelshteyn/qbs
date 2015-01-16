@@ -142,6 +142,26 @@ Module {
         allowedValues: ["arm", "thumb"]
     }
 
+    property var buildEnv: {
+        return {
+            "ANDROID_NDK_HOME": ndkDir,
+            "APP_ABI": abi,
+            "APP_STL": appStl,
+            "NDK_ARCH": "", // this one is abi and the other is buildProfile?
+            "NDK_HOME": ndkDir,
+            "NDK_HOST": hostArch, // ???
+            "NDK_TOOLCHAIN_VERSION": toolchainVersion
+        };
+    }
+
+    setupBuildEnvironment: {
+        for (var key in buildEnv) {
+            v = new ModUtils.EnvironmentVariable(key);
+            v.value = buildEnv[key];
+            v.set();
+        }
+    }
+
     cpp.toolchainInstallPath: FileInfo.joinPaths(ndkDir, "toolchains",
                                                  toolchainDirPrefix +
                                                  NdkUtils.toolchainVersionNumber(toolchainVersion),
