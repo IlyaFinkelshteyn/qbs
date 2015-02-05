@@ -113,6 +113,7 @@ Module {
     Rule {
         multiplex: true
         inputs: ["java.class"]
+        inputsFromDependencies: ["java.jar"]
         Artifact {
             filePath: "classes.dex"
             fileTags: ["android.dex"]
@@ -122,6 +123,8 @@ Module {
                                                 "dx");
             var args = ["--dex", "--output", output.filePath,
                         product.moduleProperty("java", "classFilesDir")];
+            for (var i in inputs["java.jar"])
+                args.push(inputs["java.jar"][i].filePath);
             var cmd = new Command(dxFilePath, args);
             cmd.description = "Creating " + output.fileName;
             return [cmd];

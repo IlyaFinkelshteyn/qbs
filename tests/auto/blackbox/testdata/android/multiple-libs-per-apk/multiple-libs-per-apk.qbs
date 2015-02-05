@@ -15,10 +15,15 @@ Project {
         cpp.useRPaths: false
     }
 
+    JavaJarFile {
+        name: "lib3"
+        files: ["lib3.java"]
+    }
+
     AndroidApk {
         name: "twolibs"
         packageName: "io.qt.dummy"
         sourcesDir: "src"
-        Depends { productTypes: ["android.nativelibrary"] }
+        Depends { productTypes: ["android.nativelibrary", "java.jar"] }
     }
 }
