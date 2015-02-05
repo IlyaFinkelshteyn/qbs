@@ -2,6 +2,16 @@ var FileInfo = loadExtension("qbs.FileInfo");
 var DarwinTools = loadExtension("qbs.DarwinTools");
 var PropertyList = loadExtension("qbs.PropertyList");
 
+function __destinationDirectoryForResource(product, input) {
+    var isb = input.moduleProperty("qbs", "installSourceBase");
+    if (!isb)
+        return input.fileName;
+    else
+        return FileInfo.relativePath(
+                    FileInfo.joinPaths(product.sourceDirectory, isb),
+                    input.filePath);
+}
+
 function destinationDirectoryForResource(product, input) {
     var path = product.destinationDirectory;
     var inputFilePath = FileInfo.joinPaths(input.baseDir, input.fileName);

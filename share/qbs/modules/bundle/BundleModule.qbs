@@ -391,7 +391,7 @@ Module {
     Rule {
         condition: qbs.targetOS.contains("darwin")
         multiplex: true
-        inputs: ["infoplist", "pkginfo", "hpp",
+        inputs: ["infoplist", "pkginfo", "hpp", "hpp_public", "hpp_private", "bundle_resource",
                  "icns", "resourcerules", "ipa",
                  "compiled_nib", "compiled_storyboard", "compiled_assetcatalog"]
 
@@ -409,7 +409,7 @@ Module {
 
                 var packageType = ModUtils.moduleProperty(product, "packageType");
                 if (packageType === "FMWK") {
-                    var publicHeaders = ModUtils.moduleProperties(product, "publicHeaders");
+                    var publicHeaders = inputs.hpp_public;
                     if (publicHeaders && publicHeaders.length) {
                         artifacts.push({
                             filePath: FileInfo.joinPaths(product.destinationDirectory, ModUtils.moduleProperty(product, "bundleName"), "Headers"),
@@ -417,7 +417,7 @@ Module {
                         });
                     }
 
-                    var privateHeaders = ModUtils.moduleProperties(product, "privateHeaders");
+                    var privateHeaders = inputs.hpp_private;
                     if (privateHeaders && privateHeaders.length) {
                         artifacts.push({
                             filePath: FileInfo.joinPaths(product.destinationDirectory, ModUtils.moduleProperty(product, "bundleName"), "PrivateHeaders"),
@@ -443,21 +443,21 @@ Module {
 
                 var headerTypes = ["public", "private"];
                 for (var h in headerTypes) {
-                    var sources = ModUtils.moduleProperties(product, headerTypes[h] + "Headers");
+                    var sources = inputs["hpp_" + headerTypes[h]];
                     var destination = FileInfo.joinPaths(product.destinationDirectory, ModUtils.moduleProperty(product, headerTypes[h] + "HeadersFolderPath"));
                     for (i in sources) {
                         artifacts.push({
-                            filePath: FileInfo.joinPaths(destination, FileInfo.fileName(sources[i])),
+                            filePath: FileInfo.joinPaths(destination, BundleTools.__destinationDirectoryForResource(product, sources[i])),
                             fileTags: ["bundle.hpp"]
                         });
                     }
                 }
 
-                sources = ModUtils.moduleProperties(product, "resources");
+                sources = inputs.bundle_resource;
                 for (i in sources) {
                     destination = BundleTools.destinationDirectoryForResource(product, {baseDir: FileInfo.path(sources[i]), fileName: FileInfo.fileName(sources[i])});
                     artifacts.push({
-                        filePath: FileInfo.joinPaths(destination, FileInfo.fileName(sources[i])),
+                        filePath: FileInfo.joinPaths(destination, FileInfo.joinPaths(destination, BundleTools.__destinationDirectoryForResource(product, sources[i]))),
                         fileTags: ["bundle.resource"]
                     });
                 }
@@ -534,47 +534,63 @@ Module {
                 commands.push(cmd);
             }
 
-            cmd = new JavaScriptCommand();
-            cmd.description = "copying public headers";
-            cmd.highlight = "filegen";
-            cmd.sources = ModUtils.moduleProperties(product, "publicHeaders");
-            cmd.destination = FileInfo.joinPaths(product.destinationDirectory, ModUtils.moduleProperty(product, "publicHeadersFolderPath"));
-            cmd.sourceCode = function() {
-                var i;
-                for (var i in sources) {
-                    File.copy(sources[i], FileInfo.joinPaths(destination, FileInfo.fileName(sources[i])));
-                }
-            };
-            if (cmd.sources && cmd.sources.length)
-                commands.push(cmd);
+            if (inputs.hpp_public && inputs.hpp_public.length) {
+                cmd = new JavaScriptCommand();
+                cmd.description = "copying public headers";
+                cmd.highlight = "filegen";
+                cmd.destination = FileInfo.joinPaths(product.destinationDirectory, ModUtils.moduleProperty(product, "publicHeadersFolderPath"));
+                cmd.sources = inputs.hpp_public.map(function (inp) {
+                    return {
+                        src: inp.filePath,
+                        dst: FileInfo.joinPaths(cmd.destination, BundleTools.__destinationDirectoryForResource(product, inp))
+                    };
+                });
+                cmd.sourceCode = function() {
+                    var i;
+                    for (i in sources) {
+                        File.copy(sources[i].src, sources[i].dst);
+                    }
+                };
+            }
 
-            cmd = new JavaScriptCommand();
-            cmd.description = "copying private headers";
-            cmd.highlight = "filegen";
-            cmd.sources = ModUtils.moduleProperties(product, "privateHeaders");
-            cmd.destination = FileInfo.joinPaths(product.destinationDirectory, ModUtils.moduleProperty(product, "privateHeadersFolderPath"));
-            cmd.sourceCode = function() {
-                var i;
-                for (var i in sources) {
-                    File.copy(sources[i], FileInfo.joinPaths(destination, FileInfo.fileName(sources[i])));
-                }
-            };
-            if (cmd.sources && cmd.sources.length)
-                commands.push(cmd);
+            if (inputs.hpp_private && inputs.hpp_private.length) {
+                cmd = new JavaScriptCommand();
+                cmd.description = "copying private headers";
+                cmd.highlight = "filegen";
+                cmd.destination = FileInfo.joinPaths(product.destinationDirectory, ModUtils.moduleProperty(product, "privateHeadersFolderPath"));
+                cmd.sources = inputs.hpp_private.map(function (inp) {
+                    return {
+                        src: inp.filePath,
+                        dst: FileInfo.joinPaths(cmd.destination, BundleTools.__destinationDirectoryForResource(product, inp))
+                    }
+                });
+                cmd.sourceCode = function() {
+                    var i;
+                    for (i in sources) {
+                        File.copy(sources[i].src, sources[i].dst);
+                    }
+                };
+            }
 
-            cmd = new JavaScriptCommand();
-            cmd.description = "copying resources";
-            cmd.highlight = "filegen";
-            cmd.sources = ModUtils.moduleProperties(product, "resources");
-            cmd.sourceCode = function() {
-                var i;
-                for (var i in sources) {
-                    var destination = BundleTools.destinationDirectoryForResource(product, {baseDir: FileInfo.path(sources[i]), fileName: FileInfo.fileName(sources[i])});
-                    File.copy(sources[i], FileInfo.joinPaths(destination, FileInfo.fileName(sources[i])));
-                }
-            };
-            if (cmd.sources && cmd.sources.length)
-                commands.push(cmd);
+            if (inputs.bundle_resource && inputs.bundle_resource.length) {
+                cmd = new JavaScriptCommand();
+                cmd.description = "copying resources";
+                cmd.highlight = "filegen";
+                cmd.destination = FileInfo.joinPaths(product.destinationDirectory, ModUtils.moduleProperty(product, "unlocalizedResourcesFolderPath"));
+                cmd.sources = inputs.bundle_resource.map(function (inp) {
+                    return {
+                        src: inp.filePath,
+                        dst: FileInfo.joinPaths(cmd.destination, BundleTools.__destinationDirectoryForResource(product, inp))
+                        //var destination = BundleTools.destinationDirectoryForResource(product, {baseDir: FileInfo.path(sources[i]), fileName: FileInfo.fileName(sources[i])});
+                    };
+                });
+                cmd.sourceCode = function() {
+                    var i;
+                    for (i in sources) {
+                        File.copy(sources[i].src, sources[i].dst);
+                    }
+                };
+            }
 
             if (product.type.contains("application") && product.moduleProperty("qbs", "hostOS").contains("darwin")) {
                 for (i in bundles) {
