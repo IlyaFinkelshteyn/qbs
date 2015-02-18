@@ -156,6 +156,68 @@ QbsLibrary {
         files: "buildgraph/forward_decls.h"
     }
     Group {
+        name: "Xcode generator"
+        prefix: "generators/xcode/"
+        files: [
+            "opensteppropertylist.cpp",
+            "opensteppropertylist.h",
+            "pbx.h",
+            "pbxbuildfile.cpp",
+            "pbxbuildfile.h",
+            "pbxbuildphase.cpp",
+            "pbxbuildphase.h",
+            "pbxcontainer.cpp",
+            "pbxcontainer.h",
+            "pbxcontaineritemproxy.cpp",
+            "pbxcontaineritemproxy.h",
+            "pbxfileencoding.h",
+            "pbxfilereference.cpp",
+            "pbxfilereference.h",
+            "pbxfiletype.cpp",
+            "pbxfiletype.h",
+            "pbxframeworksbuildphase.cpp",
+            "pbxframeworksbuildphase.h",
+            "pbxgroup.cpp",
+            "pbxgroup.h",
+            "pbxlegacytarget.cpp",
+            "pbxlegacytarget.h",
+            "pbxnativetarget.cpp",
+            "pbxnativetarget.h",
+            "pbxobject.cpp",
+            "pbxobject.h",
+            "pbxproducttype.cpp",
+            "pbxproducttype.h",
+            "pbxproject.cpp",
+            "pbxproject.h",
+            "pbxreference.cpp",
+            "pbxreference.h",
+            "pbxsourcesbuildphase.cpp",
+            "pbxsourcesbuildphase.h",
+            "pbxsourcetree.cpp",
+            "pbxsourcetree.h",
+            "pbxtarget.cpp",
+            "pbxtarget.h",
+            "pbxtargetdependency.cpp",
+            "pbxtargetdependency.h",
+            "xcbuildconfiguration.cpp",
+            "xcbuildconfiguration.h",
+            "xcconfigurationlist.cpp",
+            "xcconfigurationlist.h",
+            "xcodegenerator.cpp",
+            "xcodegenerator.h",
+            "xcodenativegenerator.cpp",
+            "xcodenativegenerator.h",
+            "xcodesimplegenerator.cpp",
+            "xcodesimplegenerator.h",
+            "xcscheme.cpp",
+            "xcscheme.h",
+            "xcsettings.cpp",
+            "xcsettings.h",
+            "xcodebuildsettingmapping.cpp",
+            "xcodebuildsettingmapping.h"
+        ]
+    }
+    Group {
         name: "jsextensions"
         prefix: name + '/'
         files: [
