@@ -183,6 +183,18 @@ void TestBlackbox::sanitizeOutput(QByteArray *ba)
         ba->replace('\r', "");
 }
 
+void TestBlackbox::headersclean()
+{
+    QDir::setCurrent(testDataDir + QLatin1String("/headersclean"));
+    QCOMPARE(runQbs(), 0);
+
+    QbsRunParameters params;
+    params.arguments << "headersclean.languages:objcpp";
+    params.expectFailure = true;
+    QVERIFY(runQbs(params) != 0);
+    QVERIFY(m_qbsStderr.contains("Objective-C++ is not supported"));
+}
+
 void TestBlackbox::initTestCase()
 {
     QVERIFY(regularFileExists(qbsExecutableFilePath));

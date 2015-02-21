@@ -169,10 +169,6 @@ function additionalCompilerFlags(product, input, output) {
     } else if (effectiveType === EffectiveTypeEnum.APP) {
         if (positionIndependentCode && !product.moduleProperty("qbs", "toolchain").contains("mingw"))
             args.push('-fPIE');
-    } else {
-        throw ("The product's type must be in " + JSON.stringify(
-                   Object.getOwnPropertyNames(libTypes).concat(Object.getOwnPropertyNames(appTypes)))
-                + ". But it is " + JSON.stringify(product.type) + '.');
     }
     var cppFlags = ModUtils.moduleProperties(input, 'cppFlags');
     for (i in cppFlags)
@@ -377,9 +373,14 @@ function prepareCompiler(project, product, inputs, outputs, input, output) {
     }
 
     var cmd = new Command(compilerPath, args);
-    cmd.description = (pchOutput ? 'pre' : '') + 'compiling ' + input.fileName;
-    if (pchOutput)
-        cmd.description += ' (' + tag + ')';
+    if (!input.fileTags.contains("headersclean.source")) {
+        cmd.description = (pchOutput ? 'pre' : '') + 'compiling ' + input.fileName;
+        if (pchOutput)
+            cmd.description += ' (' + tag + ')';
+    } else {
+        cmd.silent = true;
+    }
+
     cmd.highlight = "compiler";
     cmd.responseFileUsagePrefix = '@';
     return cmd;

@@ -106,6 +106,7 @@ private slots:
     void erroneousFiles();
     void exportRule();
     void fileDependencies();
+    void headersclean();
     void installedTransformerOutput();
     void inputsFromDependencies();
     void installPackage();

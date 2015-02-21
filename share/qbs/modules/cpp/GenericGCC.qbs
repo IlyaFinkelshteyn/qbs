@@ -244,9 +244,13 @@ CppModule {
         auxiliaryInputs: ["hpp"]
         explicitlyDependsOn: ["c_pch", "cpp_pch", "objc_pch", "objcpp_pch"]
 
-        Artifact {
-            fileTags: ["obj"]
-            filePath: ".obj/" + qbs.getHash(input.baseDir) + "/" + input.fileName + ".o"
+        outputFileTags: ["obj", "headersclean.obj"]
+        outputArtifacts: {
+          return [{
+                fileTags: input.fileTags.contains("headersclean.source")
+                          ? ["headersclean.obj"] : ["obj"],
+                filePath: ".obj/" + qbs.getHash(input.baseDir) + "/" + input.fileName + ".o"
+            }];
         }
 
         prepare: {

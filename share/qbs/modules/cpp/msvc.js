@@ -124,10 +124,15 @@ function prepareCompiler(project, product, inputs, outputs, input, output) {
         compilerPath = wrapperArgs.shift();
         args = wrapperArgs.concat(args);
     }
-    var cmd = new Command(compilerPath, args)
-    cmd.description = (pchOutput ? 'pre' : '') + 'compiling ' + input.fileName;
-    if (pchOutput)
-        cmd.description += ' (' + tag + ')';
+    var cmd = new Command(compilerPath, args);
+    if (!input.fileTags.contains("headersclean.source")) {
+        cmd.description = (pchOutput ? 'pre' : '') + 'compiling ' + input.fileName;
+        if (pchOutput)
+            cmd.description += ' (' + tag + ')';
+    } else {
+        cmd.silent = true;
+    }
+
     cmd.highlight = "compiler";
     cmd.workingDirectory = product.buildDirectory + "/.obj";
     cmd.responseFileUsagePrefix = '@';
