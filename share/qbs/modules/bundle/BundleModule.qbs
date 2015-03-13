@@ -402,7 +402,8 @@ Module {
         outputFileTags: ["bundle",
             "bundle.symlink.headers", "bundle.symlink.private-headers",
             "bundle.symlink.resources", "bundle.symlink.executable",
-            "bundle.symlink.version", "bundle.hpp", "bundle.resource"]
+            "bundle.symlink.version", "bundle.resource", "bundle.hpp",
+            "bundle.hpp.public", "bundle.hpp.private"]
         outputArtifacts: {
             var i, artifacts = [];
             if (ModUtils.moduleProperty(product, "isBundle")) {
@@ -452,7 +453,7 @@ Module {
                     for (i in sources) {
                         artifacts.push({
                             filePath: FileInfo.joinPaths(destination, FileInfo.fileName(sources[i])),
-                            fileTags: ["bundle.hpp"]
+                            fileTags: ["bundle.hpp", "bundle.hpp." + headerTypes[h]]
                         });
                     }
                 }

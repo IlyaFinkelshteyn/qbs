@@ -57,6 +57,15 @@ Module {
         description: "optimization level"
     }
 
+    property string executableInstallDir: targetOS.contains("windows") ? "" : "bin"
+    property string systemExecutableInstallDir: targetOS.contains("windows") ? "" : "sbin"
+    property string applicationBundleInstallDir: "Applications"
+    property string frameworkInstallDir: "Library/Frameworks"
+    property string headerInstallDir: FileInfo.joinPaths("include", !targetOS.contains("windows") ? product.targetName : undefined)
+    property string privateHeaderInstallDir: FileInfo.joinPaths("include", !targetOS.contains("windows") ? product.targetName : undefined)
+    property string libInstallDir: targetOS.contains("windows") ? "" : "lib"
+    property string pluginInstallDir: targetOS.contains("darwin") ? "Library/PlugIns" : FileInfo.joinPaths(libInstallDir, "plugins")
+
     validate: {
         var validator = new ModUtils.PropertyValidator("qbs");
         validator.setRequiredProperty("architecture", architecture,
