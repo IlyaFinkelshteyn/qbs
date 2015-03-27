@@ -322,6 +322,16 @@ Module {
         validator.validate();
     }
 
+    setupBuildEnvironment: {
+        var env = qbs.commonBuildEnvironment;
+        for (var i in env) {
+            var v = new ModUtils.EnvironmentVariable(i, qbs.pathListSeparator,
+                                                     qbs.hostOS.contains("windows"));
+            v.value = env[i];
+            v.set();
+        }
+    }
+
     setupRunEnvironment: {
         var env = qbs.commonRunEnvironment;
         for (var i in env) {

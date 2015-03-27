@@ -123,6 +123,8 @@ Module {
     property path windowsSystemRoot: FileInfo.fromWindowsSeparators(Utilities.getNativeSetting(windowsRegistryKey, "SystemRoot"))
     property path windowsShellPath: FileInfo.fromWindowsSeparators(Environment.getEnv("COMSPEC")) || FileInfo.joinPaths(windowsSystemRoot, "System32", "cmd.exe")
 
+    property var commonBuildEnvironment: ({})
+
     property var commonRunEnvironment: {
         var env = Environment.currentEnv();
         if (targetOS.contains("windows")) {

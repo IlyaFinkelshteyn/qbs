@@ -145,6 +145,7 @@ private slots:
     void listPropertyOrder();
     void loadableModule();
     void lrelease();
+    void makeEnvironment();
     void missingProfile();
     void mixedBuildVariants();
     void multipleChanges();

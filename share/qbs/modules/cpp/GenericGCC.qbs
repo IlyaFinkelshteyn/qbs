@@ -137,6 +137,30 @@ CppModule {
         return versionParts.join('.');
     }
 
+    qbs.commonBuildEnvironment: {
+        var env = base;
+
+        // GNU Make - https://www.gnu.org/software/make/manual/html_node/Implicit-Variables.html
+        env["AR"] = archiverPath;
+
+        if (compilerPathByLanguage) {
+            env["CC"] = compilerPathByLanguage["c"] || compilerPath;
+            env["CXX"] = compilerPathByLanguage["cpp"] || compilerPath;
+        }
+
+        var effectiveCompilerPath = FileInfo.path(env["CC"]);
+        var effectiveCompilerName = FileInfo.fileName(env["CC"]);
+        if (effectiveCompilerName === "clang++") {
+            env["CC"] = FileInfo.joinPaths(effectiveCompilerPath, "clang");
+        } else if (effectiveCompilerName === "g++") {
+            env["CC"] = FileInfo.joinPaths(effectiveCompilerPath, "gcc");
+        }
+
+        env["LD"] = linkerPath;
+
+        return env;
+    }
+
     validate: {
         var validator = new ModUtils.PropertyValidator("cpp");
         validator.setRequiredProperty("architecture", architecture,

@@ -3194,6 +3194,19 @@ void TestBlackbox::lrelease()
     QVERIFY(!regularFileExists(relativeProductBuildDir("lrelease-test") + "/hu.qm"));
 }
 
+void TestBlackbox::makeEnvironment()
+{
+    if (!HostOsInfo::isAnyUnixHost())
+        QSKIP("only applies on Unix");
+
+    QDir::setCurrent(testDataDir + QLatin1String("/make-environment"));
+    QCOMPARE(runQbs(), 0);
+    QVERIFY(m_qbsStdout.contains("AR="));
+    QVERIFY(m_qbsStdout.contains("CC="));
+    QVERIFY(m_qbsStdout.contains("CXX="));
+    QVERIFY(m_qbsStdout.contains("LD="));
+}
+
 void TestBlackbox::badInterpreter()
 {
     if (!HostOsInfo::isAnyUnixHost())
