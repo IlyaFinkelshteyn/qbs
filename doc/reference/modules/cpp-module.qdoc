@@ -93,12 +93,12 @@
         \li List of preprocessor macros that are used for all projects that are built for the
             current target platform. User project files usually do not set this property.
     \row
-        \li compilerDefines
-        \li \c{stringList}
-        \li 1.0
-        \li \c{undefined}
-        \li List of preprocessor macros that are used for all projects that are using the current
-            toolchain. User project files usually do not set this property.
+        \li compilerDefinesByLanguage
+        \li \c{string} to \c{string} to \c{string} map (read only)
+        \li 1.4.2
+        \li determined automatically
+        \li Map of language tags to list of preprocessor macros that are used for all projects that
+            are using the current toolchain. User project files do not set this property.
     \row
         \li includePaths
         \li \c{pathList}

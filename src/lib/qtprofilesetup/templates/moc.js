@@ -27,9 +27,17 @@
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ****************************************************************************/
-function args(product, input, outputFileName)
-{
-    var defines = product.moduleProperty("cpp", "compilerDefines");
+
+var ModUtils = loadExtension("qbs.ModUtils");
+
+function args(product, input, outputFileName) {
+    var defines = product.moduleProperty("cpp", "compilerDefinesByLanguage");
+    if (input.fileTags.contains("objcpp"))
+        defines = ModUtils.flattenDictionary(defines["objcpp"]) || [];
+    else if (input.fileTags.contains("cpp"))
+        defines = ModUtils.flattenDictionary(defines["cpp"]) || [];
+    else
+        defines = [];
     defines = defines.uniqueConcat(product.moduleProperty("cpp", "platformDefines"));
     defines = defines.uniqueConcat(
                 ModUtils.modulePropertiesFromArtifacts(product, [input], 'cpp', 'defines'));

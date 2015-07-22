@@ -52,9 +52,9 @@ Module {
     property path precompiledHeaderDir: product.buildDirectory
     property stringList defines
     property stringList platformDefines: qbs.enableDebugCode ? [] : ["NDEBUG"]
-    property stringList compilerDefines
+    readonly property var compilerDefinesByLanguage: undefined
     PropertyOptions {
-        name: "compilerDefines"
+        name: "compilerDefinesByLanguage"
         description: "preprocessor macros that are defined when using this particular compiler"
     }
 
@@ -288,6 +288,13 @@ Module {
 
     validate: {
         var validator = new ModUtils.PropertyValidator("cpp");
+        validator.setRequiredProperty("compilerDefinesByLanguage", compilerDefinesByLanguage);
+        validator.setRequiredProperty("compilerVersionMajor", compilerVersionMajor);
+        validator.setRequiredProperty("compilerVersionMinor", compilerVersionMinor);
+        validator.setRequiredProperty("compilerVersionPatch", compilerVersionPatch);
+        validator.addRangeValidator("compilerVersionMajor", compilerVersionMajor, 0);
+        validator.addRangeValidator("compilerVersionMinor", compilerVersionMinor, 0);
+        validator.addRangeValidator("compilerVersionPatch", compilerVersionPatch, 0);
         validator.addCustomValidator("architecture", architecture, function (value) {
             return !architecture || architecture === canonicalArchitecture(architecture);
         }, "'" + architecture + "' is invalid. You must use the canonical name '" +

@@ -216,8 +216,7 @@ Module {
             cmd.buildEnv = product.moduleProperty("cpp", "buildEnv");
             cmd.defines = product.moduleProperty("cpp", "defines");
             cmd.platformDefines = product.moduleProperty("cpp", "platformDefines");
-            cmd.compilerDefines = product.moduleProperty("cpp", "compilerDefines");
-            cmd.allDefines = [].concat(cmd.defines || []).concat(cmd.platformDefines || []).concat(cmd.compilerDefines || []);
+            cmd.allDefines = [].concat(cmd.defines || []).concat(cmd.platformDefines || []);
 
             cmd.platformInfoPlist = product.moduleProperty("cpp", "platformInfoPlist");
             cmd.sdkSettingsPlist = product.moduleProperty("cpp", "sdkSettingsPlist");

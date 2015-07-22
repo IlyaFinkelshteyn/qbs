@@ -32,6 +32,7 @@ var File = loadExtension("qbs.File");
 var FileInfo = loadExtension("qbs.FileInfo");
 var ModUtils = loadExtension("qbs.ModUtils");
 var PathTools = loadExtension("qbs.PathTools");
+var Process = loadExtension("qbs.Process");
 var UnixUtils = loadExtension("qbs.UnixUtils");
 var WindowsUtils = loadExtension("qbs.WindowsUtils");
 
@@ -675,4 +676,27 @@ function concatLibsFromArtifacts(libs, artifacts)
     var deps = artifacts.map(function (a) { return a.filePath; });
     deps.reverse();
     return concatLibs(deps, libs);
+}
+
+function compilerDefines(compilerFilePath, nullDevice, tag) {
+    var process;
+    try {
+        var re = /^#define ([_a-zA-Z][_a-zA-Z0-9]+)(?: (.+))?$/;
+        process = new Process();
+        if (process.exec(compilerFilePath, ["-E", "-dM", "-x", languageName(tag),
+                                            "-c", nullDevice]) === 0) {
+            var results = {};
+            var lines = process.readStdOut().trim().split(/[\r\n]/);
+            for (var i in lines) {
+                var match = lines[i].trim().match(re);
+                if (match !== null)
+                    results[match[1]] = match[2];
+            }
+
+            return results;
+        }
+    } finally {
+        if (process)
+            process.close();
+    }
 }

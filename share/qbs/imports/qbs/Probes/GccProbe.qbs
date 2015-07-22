@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
+** Copyright (C) 2015 Jake Petroules.
 ** Contact: http://www.qt.io/licensing
 **
 ** This file is part of the Qt Build Suite.
@@ -29,31 +29,33 @@
 ****************************************************************************/
 
 import qbs
-import qbs.ModUtils
+import qbs.File
+import qbs.FileInfo
+import qbs.Process
+import "../../../modules/cpp/gcc.js" as GccUtils
 
-Product {
-    name: "autotest-runner"
-    type: ["autotest-result"]
-    builtByDefault: false
-    property stringList arguments: []
-    property stringList environment: ModUtils.flattenDictionary(qbs.commonRunEnvironment)
-    property bool limitToSubProject: true
-    Depends {
-        productTypes: "autotest"
-        limitToSubProject: product.limitToSubProject
-    }
-    Rule {
-        inputsFromDependencies: "application"
-        Artifact {
-            filePath: qbs.getHash(input.filePath) + ".result.dummy" // Will never exist.
-            fileTags: "autotest-result"
-            alwaysUpdated: false
+Probe {
+    // Inputs
+    property stringList nullDevice: qbs.nullDevice
+    property var compilerFilePathByLanguage
+
+    // Outputs
+    property var compilerDefinesByLanguage
+
+    configure: {
+        compilerDefinesByLanguage = {};
+        var languages = ["c", "cpp", "objc", "objcpp"];
+        for (var i = 0; i < languages.length; ++i) {
+            var compilerFilePath = compilerFilePathByLanguage[languages[i]];
+            if (compilerFilePath)
+                compilerDefinesByLanguage[languages[i]] = GccUtils.compilerDefines(compilerFilePath,
+                                                                                   nullDevice,
+                                                                                   languages[i]);
         }
-        prepare: {
-            var cmd = new Command(input.filePath, product.arguments);
-            cmd.description = "Running test " + input.fileName;
-            cmd.environment = product.environment;
-            return cmd;
-        }
+
+        // At least C is required
+        found = compilerDefinesByLanguage["c"] !== undefined;
+        if (!found)
+            compilerDefinesByLanguage = undefined;
     }
 }

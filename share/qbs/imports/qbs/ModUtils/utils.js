@@ -197,13 +197,18 @@ function concatAll() {
 }
 
 /**
-  * Flattens an environment dictionary (string keys to arrays or strings)
-  * into a string list containing items like \c key=value1:value2:value3
+  * Flattens an dictionary (string keys to strings)
+  * into a string list containing items like \c key=value
   */
-function flattenEnvironmentDictionary(dict, pathListSeparator) {
+function flattenDictionary(dict, separator) {
+    separator = separator || "=";
     var list = [];
-    for (var i in dict)
-        list.push(i + "=" + dict[i]);
+    for (var i in dict) {
+        var value = i;
+        if (dict[i] !== undefined) // allow differentiation between undefined and empty string
+            value += separator + dict[i];
+        list.push(value);
+    }
     return list;
 }
 

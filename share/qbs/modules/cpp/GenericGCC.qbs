@@ -33,6 +33,7 @@ import qbs.File
 import qbs.FileInfo
 import qbs.ModUtils
 import qbs.PathTools
+import qbs.Probes
 import qbs.Process
 import qbs.UnixUtils
 import qbs.WindowsUtils
@@ -40,6 +41,27 @@ import 'gcc.js' as Gcc
 
 CppModule {
     condition: false
+
+    Probes.GccProbe {
+        id: gccProbe
+        compilerFilePathByLanguage: compilerPathByLanguage
+    }
+
+    compilerDefinesByLanguage: gccProbe.compilerDefinesByLanguage
+
+    property var compilerDefines: compilerDefinesByLanguage
+                                  ? (compilerDefinesByLanguage["c"] || {})
+                                  : {}
+
+    compilerVersionMajor: compilerDefines[qbs.toolchain.contains("clang")
+                                          ? "__clang_major__"
+                                          : "__GNUC__"]
+    compilerVersionMinor: compilerDefines[qbs.toolchain.contains("clang")
+                                          ? "__clang_minor__"
+                                          : "__GNUC_MINOR__"]
+    compilerVersionPatch: compilerDefines[qbs.toolchain.contains("clang")
+                                          ? "__clang_patchlevel__"
+                                          : "__GNUC_PATCHLEVEL__"]
 
     cxxStandardLibrary: {
         if (cxxLanguageVersion && qbs.toolchain.contains("clang")) {
