@@ -32,18 +32,9 @@ import qbs 1.0
 import qbs.ModUtils
 import qbs.WindowsUtils
 
-GenericGCC {
+WindowsGCC {
     condition: qbs.targetOS.contains("windows") &&
                qbs.toolchain && qbs.toolchain.contains("mingw")
-    staticLibraryPrefix: "lib"
-    dynamicLibraryPrefix: ""
-    executablePrefix: ""
-    staticLibrarySuffix: ".a"
-    dynamicLibrarySuffix: ".dll"
-    executableSuffix: ".exe"
-    windowsApiCharacterSet: "unicode"
-    platformDefines: base.concat(WindowsUtils.characterSetDefines(windowsApiCharacterSet))
-    compilerDefines: ['__GNUC__', 'WIN32', '_WIN32']
 
     property string windresName: 'windres'
     property path windresPath: { return toolchainPathPrefix + windresName }
