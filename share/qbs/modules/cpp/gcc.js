@@ -39,7 +39,6 @@ function linkerFlags(product, inputs) {
     var libraryPaths = ModUtils.moduleProperties(product, 'libraryPaths');
     var dynamicLibraries = ModUtils.moduleProperties(product, "dynamicLibraries");
     var staticLibraries = ModUtils.modulePropertiesFromArtifacts(product, inputs.staticlibrary, 'cpp', 'staticLibraries');
-    var linkerScripts = ModUtils.moduleProperties(product, 'linkerScripts');
     var frameworks = ModUtils.moduleProperties(product, 'frameworks');
     var weakFrameworks = ModUtils.moduleProperties(product, 'weakFrameworks');
     var rpaths = (product.moduleProperty("cpp", "useRPaths") !== false)
@@ -61,8 +60,8 @@ function linkerFlags(product, inputs) {
     if (libraryPaths)
         args = args.concat(libraryPaths.map(function(path) { return '-L' + path }));
 
-    if (linkerScripts)
-        args = args.concat(linkerScripts.map(function(path) { return '-T' + path }));
+    if (inputs["cpp.linker-script"])
+        args = args.concat(inputs["cpp.linker-script"].map(function (a) { return 'T' + a.filePath; }));
 
     for (i in staticLibraries) {
         if (staticLibsFromInputs.contains(staticLibraries[i]) || File.exists(staticLibraries[i])) {

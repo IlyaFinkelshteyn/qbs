@@ -156,6 +156,13 @@ Module {
     }
 
     Group {
+        name: "Manifest"
+        condition: manifestFile
+        files: [manifestFile]
+        fileTags: ["java.manifest"]
+    }
+
+    Group {
         name: "io.qt.qbs.internal.java-helper"
         files: {
             return JavaUtils.helperFullyQualifiedNames("java").map(function(name) {
@@ -205,7 +212,7 @@ Module {
     }
 
     Rule {
-        inputs: ["java.class"]
+        inputs: ["java.class", "java.manifest"]
         multiplex: true
 
         Artifact {

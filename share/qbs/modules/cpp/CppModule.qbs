@@ -286,6 +286,13 @@ Module {
         fileTags: ["hpp"]
     }
 
+    Group {
+        name: "Linker Scripts"
+        condition: linkerScripts
+        files: linkerScripts
+        fileTags: ["cpp.linker-script"]
+    }
+
     validate: {
         var validator = new ModUtils.PropertyValidator("cpp");
         validator.addCustomValidator("architecture", architecture, function (value) {

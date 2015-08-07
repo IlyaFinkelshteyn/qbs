@@ -183,10 +183,17 @@ Module {
         };
     }
 
+    Group {
+        name: "Info.plist"
+        condition: infoPlistFile
+        files: [infoPlistFile]
+        fileTags: ["bundle.infoplist"]
+    }
+
     Rule {
         condition: qbs.targetOS.contains("darwin")
         multiplex: true
-        inputs: ["qbs", "partial_infoplist"]
+        inputs: ["qbs", "bundle.infoplist", "partial_infoplist"]
 
         outputFileTags: ["infoplist"]
         outputArtifacts: {
