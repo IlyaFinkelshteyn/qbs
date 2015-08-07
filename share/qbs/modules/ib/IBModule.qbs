@@ -159,9 +159,13 @@ Module {
         outputArtifacts: Ib.ibtoolOutputArtifacts(product, inputs, input)
 
         prepare: {
-            var cmd = new Command(ModUtils.moduleProperty(product, "ibtoolPath"),
-                                  Ib.ibtooldArguments(product, inputs, outputs));
+            var cmd = new JavaScriptCommand();
+            cmd.sourceCode = function () {
+                ModUtils.BlackboxOutputArtifactTracker.moveArtifacts(outputs);
+            };
             cmd.description = "compiling " + input.fileName;
+            cmd.extendedDescription = qbs.shellQuote(ModUtils.moduleProperty(product, "ibtoolPath"),
+                                                     Ib.ibtooldArguments(product, inputs, outputs));
 
             // Also display the language name of the nib/storyboard being compiled if it has one
             var localizationKey = DarwinTools.localizationKey(input.filePath);
@@ -169,17 +173,6 @@ Module {
                 cmd.description += ' (' + localizationKey + ')';
 
             cmd.highlight = 'compiler';
-
-            // May not be strictly needed, but is set by some versions of Xcode
-            if (input.fileTags.contains("storyboard")) {
-                var targetOS = product.moduleProperty("qbs", "targetOS");
-                if (targetOS.contains("ios"))
-                    cmd.environment.push("IBSC_MINIMUM_COMPATIBILITY_VERSION=" + product.moduleProperty("cpp", "minimumIosVersion"));
-                if (targetOS.contains("osx"))
-                    cmd.environment.push("IBSC_MINIMUM_COMPATIBILITY_VERSION=" + product.moduleProperty("cpp", "minimumOsxVersion"));
-                if (targetOS.contains("watchos"))
-                    cmd.environment.push("IBSC_MINIMUM_COMPATIBILITY_VERSION=" + product.moduleProperty("cpp", "minimumWatchosVersion"));
-            }
 
             cmd.stdoutFilterFunction = function(output) {
                 return "";
@@ -197,11 +190,15 @@ Module {
         outputFileTags: ["compiled_assetcatalog", "partial_infoplist"]
 
         prepare: {
-            var cmd = new Command(ModUtils.moduleProperty(product, "actoolPath"),
-                                  Ib.ibtooldArguments(product, inputs, outputs));
+            var cmd = new JavaScriptCommand();
+            cmd.sourceCode = function () {
+                ModUtils.BlackboxOutputArtifactTracker.moveArtifacts(outputs);
+            };
             cmd.description = inputs["assetcatalog"].map(function (input) {
                 return "compiling " + input.fileName;
             }).join('\n');
+            cmd.extendedDescription = qbs.shellQuote(ModUtils.moduleProperty(product, "actoolPath"),
+                                                     Ib.ibtooldArguments(product, inputs, outputs));
             cmd.highlight = "compiler";
 
             cmd.stdoutFilterFunction = function(output) {

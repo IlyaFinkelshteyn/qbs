@@ -309,14 +309,17 @@ Module {
         outputArtifacts: Qdoc.outputArtifacts(product, input)
 
         prepare: {
-            var outputDir = ModUtils.moduleProperty(product, "qdocOutputDir");
-            var args = Qdoc.qdocArgs(product, input, outputDir);
-            var cmd = new Command(ModUtils.moduleProperty(product, "binPath") + '/'
-                                  + ModUtils.moduleProperty(product, "qdocName"), args);
+            var cmd = new JavaScriptCommand();
+            cmd.sourceCode = function () {
+                ModUtils.BlackboxOutputArtifactTracker.moveArtifacts(outputs);
+            };
             cmd.description = 'qdoc ' + input.fileName;
+            cmd.extendedDescription = qbs.shellQuote(
+                        FileInfo.joinPaths(ModUtils.moduleProperty(product, "binPath"),
+                                           ModUtils.moduleProperty(product, "qdocName")),
+                        Qdoc.qdocArgs(product, input, ModUtils.moduleProperty(product,
+                                                                              "qdocOutputDir")));
             cmd.highlight = 'filegen';
-            cmd.environment = ModUtils.moduleProperty(product, "qdocEnvironment");
-            cmd.environment.push("OUTDIR=" + outputDir); // Qt 4 replacement for -outputdir
             return cmd;
         }
     }

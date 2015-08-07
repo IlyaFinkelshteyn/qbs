@@ -2811,8 +2811,8 @@ void TestBlackbox::assetCatalog()
     rmDirR(relativeBuildDir());
     params.arguments = QStringList();
     QCOMPARE(runQbs(params), 0);
-    QVERIFY2(!m_qbsStdout.contains("compiling assetcatalog1.xcassets"), m_qbsStdout);
-    QVERIFY2(!m_qbsStdout.contains("compiling assetcatalog2.xcassets"), m_qbsStdout);
+    QVERIFY2(m_qbsStdout.contains("compiling assetcatalog1.xcassets"), m_qbsStdout);
+    QVERIFY2(m_qbsStdout.contains("compiling assetcatalog2.xcassets"), m_qbsStdout);
 }
 
 void TestBlackbox::assetCatalog_data()

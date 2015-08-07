@@ -44,7 +44,7 @@ function artifactsFromInputs(inputs) {
     return artifacts;
 }
 
-function ibtooldArguments(product, inputs, outputs, overrideOutput) {
+function ibtooldArguments(product, inputs, outputs, overrideOutput, overridePartialInfoPlist) {
     var i;
     var args = [];
     var allInputs = artifactsFromInputs(inputs);
@@ -118,8 +118,9 @@ function ibtooldArguments(product, inputs, outputs, overrideOutput) {
 
     // --target-device and -output-partial-info-plist were introduced in Xcode 6.0 for ibtool
     if (ModUtils.moduleProperty(product, "ibtoolVersionMajor") >= 6 || compilingAssetCatalogs) {
-        if (outputs && outputs.partial_infoplist) {
-            args.push("--output-partial-info-plist", outputs.partial_infoplist[0].filePath);
+        if (overridePartialInfoPlist || outputs.partial_infoplist) {
+            args.push("--output-partial-info-plist",
+                      overridePartialInfoPlist || outputs.partial_infoplist[0].filePath);
         }
 
         // For iOS, we'd normally only output the devices specified in TARGETED_DEVICE_FAMILY
@@ -161,6 +162,8 @@ function ibtoolFileTaggers(fileTags) {
 
     var t = "compiled_ibdoc";
     return {
+        "assetcatalog_generated_info.plist": ["partial_infoplist"],
+        "PartialInfo.plist": ["partial_infoplist"],
         ".nib": [t, "compiled_" + ext + (ext !== "nib" ? "_nib" : "")],
         ".plist": [t, "compiled_" + ext + "_infoplist"],
         ".storyboard": [t, "compiled_" + ext]
@@ -179,23 +182,34 @@ function ibtoolOutputArtifacts(product, inputs, input) {
     tracker.fileTaggers = ibtoolFileTaggers(input.fileTags);
     tracker.command = ModUtils.moduleProperty(product, "ibtoolPath");
     tracker.commandArgsFunction = function (outputDirectory) {
+        var prefix = input.fileTags.contains("storyboard") ? "SB" : "";
+        var partialInfoPlistPath = input.completeBaseName + "-" + prefix + "PartialInfo.plist";
+
         // Last --output-format argument overrides any previous ones
         // Append the name of the base output since it can be either a file or a directory
         // in the case of XIB compilations
         return ibtooldArguments(product, inputs,
-                                undefined, FileInfo.joinPaths(outputDirectory, suffix))
+                                undefined, FileInfo.joinPaths(outputDirectory, suffix),
+                                FileInfo.joinPaths(outputDirectory, partialInfoPlistPath))
             .concat(["--output-format", "xml1"]);
+    };
+    tracker.commandEnvironmentFunction = function (outputDirectory) {
+        var env = {};
+        // May not be strictly needed, but is set by some versions of Xcode
+        if (input.fileTags.contains("storyboard")) {
+            var targetOS = product.moduleProperty("qbs", "targetOS");
+            if (targetOS.contains("ios"))
+                env["IBSC_MINIMUM_COMPATIBILITY_VERSION"] = product.moduleProperty("cpp", "minimumIosVersion");
+            if (targetOS.contains("osx"))
+                env["IBSC_MINIMUM_COMPATIBILITY_VERSION"] = product.moduleProperty("cpp", "minimumOsxVersion");
+            if (targetOS.contains("watchos"))
+                env["IBSC_MINIMUM_COMPATIBILITY_VERSION"] = product.moduleProperty("cpp", "minimumWatchosVersion");
+        }
+        return env;
     };
 
     var artifacts = tracker.artifacts(
                 FileInfo.joinPaths(BundleTools.destinationDirectoryForResource(product, input)));
-
-    if (product.moduleProperty("ib", "ibtoolVersionMajor") >= 6) {
-        var prefix = input.fileTags.contains("storyboard") ? "SB" : "";
-        var path = FileInfo.joinPaths(product.destinationDirectory, input.completeBaseName +
-                                      "-" + prefix + "PartialInfo.plist");
-        artifacts.push({ filePath: path, fileTags: ["partial_infoplist"] });
-    }
 
     // Tag the "main" output
     // This can be either a file or directory so the artifact might already exist in the output list
@@ -211,7 +225,9 @@ function ibtoolOutputArtifacts(product, inputs, input) {
     }
 
     if (mainIndex === -1) {
-        // artifact not in list - the output was a directory (unflatted nib or storyboard)
+        // artifact not in list - the output was a directory (unflatted nib or storyboard);
+        // don't store the temporary file path in this artifact - since it's a directory we have
+        // no interest in copying it to the real directory later on
         artifacts.splice(0, 0, {
             filePath: main,
             fileTags: mainTags
@@ -233,22 +249,13 @@ function actoolOutputArtifacts(product, inputs) {
     tracker.commandArgsFunction = function (outputDirectory) {
         // Last --output-format argument overrides any previous ones
         return ibtooldArguments(product, inputs,
-                                undefined, outputDirectory).concat(["--output-format", "xml1"]);
+                                undefined, outputDirectory,
+                                FileInfo.joinPaths(outputDirectory,
+                                                   "assetcatalog_generated_info.plist"))
+            .concat(["--output-format", "xml1"]);
     };
     tracker.processStdOutFunction = parseActoolOutput;
-    var artifacts = tracker.artifacts(ModUtils.moduleProperty(product, "actoolOutputDirectory"));
-
-    // Newer versions of actool don't generate *anything* if there's no input;
-    // in that case a partial Info.plist would not have been generated either
-    if (artifacts && artifacts.length > 0) {
-        artifacts.push({
-            filePath: FileInfo.joinPaths(product.destinationDirectory,
-                                         "assetcatalog_generated_info.plist"),
-            fileTags: ["partial_infoplist"]
-        });
-    }
-
-    return artifacts;
+    return tracker.artifacts(ModUtils.moduleProperty(product, "actoolOutputDirectory"));
 }
 
 function parseActoolOutput(output) {

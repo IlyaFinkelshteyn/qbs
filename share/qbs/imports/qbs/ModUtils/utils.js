@@ -394,8 +394,8 @@ var BlackboxOutputArtifactTracker = (function () {
         finally {
             if (process)
                 process.close();
-            if (fakeOutputDirectory)
-                fakeOutputDirectory.remove();
+
+            // Don't remove the temporary dir, we need to move() its artifacts out later
         }
     };
     BlackboxOutputArtifactTracker.prototype.createArtifact = function (filePath) {
@@ -431,10 +431,48 @@ var BlackboxOutputArtifactTracker = (function () {
         }
     };
     BlackboxOutputArtifactTracker.prototype.fixArtifactPaths = function (artifacts, realBasePath, fakeBasePath) {
-        for (var i = 0; i < artifacts.length; ++i)
+        for (var i = 0; i < artifacts.length; ++i) {
+            // Abuse fileTags in order to set a custom property
+            // TODO: Allow artifacts to have custom non-module properties?
+            artifacts[i].fileTags = [artifacts[i].filePath].concat(artifacts[i].fileTags);
             artifacts[i].filePath = realBasePath
                 + artifacts[i].filePath.substr(fakeBasePath.length);
+        }
         return artifacts;
+    };
+    BlackboxOutputArtifactTracker.moveArtifacts = function (artifacts) {
+        var allArtifacts = [];
+        for (var tag in artifacts) {
+            for (var i = 0; i < artifacts[tag].length; ++i) {
+                var artifact = artifacts[tag][i];
+
+                var found = false;
+                for (var j = 0; j < allArtifacts.length; ++j) {
+                    if (allArtifacts[j].filePath === artifact.filePath) {
+                        allArtifacts[j].fileTags = allArtifacts[j].fileTags
+                            .uniqueConcat(artifact.fileTags);
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found)
+                    allArtifacts.push(artifact);
+            }
+        }
+
+        for (i = 0; i < allArtifacts.length; ++i) {
+            artifact = allArtifacts[i];
+            artifact.temporaryFilePath = artifact.fileTags.filter(FileInfo.isAbsolutePath)[0];
+
+            // Artifact is probably a directory artifact added externally after
+            // fixupArtifactPaths was called; ignore it
+            if (!artifact.temporaryFilePath)
+                continue;
+
+            File.makePath(FileInfo.path(artifact.filePath));
+            File.move(artifact.temporaryFilePath, artifact.filePath);
+        }
     };
     return BlackboxOutputArtifactTracker;
 })();
