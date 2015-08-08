@@ -38,6 +38,7 @@ var WindowsUtils = loadExtension("qbs.WindowsUtils");
 function linkerFlags(product, inputs) {
     var libraryPaths = ModUtils.moduleProperties(product, 'libraryPaths');
     var dynamicLibraries = ModUtils.moduleProperties(product, "dynamicLibraries");
+    var weakDynamicLibraries = ModUtils.moduleProperties(product, "weakDynamicLibraries");
     var staticLibraries = ModUtils.modulePropertiesFromArtifacts(product, inputs.staticlibrary, 'cpp', 'staticLibraries');
     var linkerScripts = ModUtils.moduleProperties(product, 'linkerScripts');
     var frameworks = ModUtils.moduleProperties(product, 'frameworks');
@@ -49,12 +50,24 @@ function linkerFlags(product, inputs) {
     if (rpaths && rpaths.length)
         args.push('-Wl,-rpath,' + rpaths.join(",-rpath,"));
 
+    function libsFromInputs(inputs, fileTags) {
+        return inputs ? inputs.filter(function (a) {
+            if (a.fileTags.contains("no_link"))
+                return false;
+            for (var i in fileTags) {
+                if (a.fileTags.contains(fileTags[i]))
+                    return true;
+            }
+            return false;
+        }).map(function (a) { return a.filePath; }) : [];
+    }
+
     // Add filenames of internal library dependencies to the lists
-    var staticLibsFromInputs = inputs.staticlibrary
-            ? inputs.staticlibrary.map(function(a) { return a.filePath; }) : [];
+    var staticLibsFromInputs = libsFromInputs(inputs.staticlibrary, ["staticlibrary"]);
+    var wholeStaticLibsFromInputs = libsFromInputs(inputs.staticlibrary, ["staticlibrary_whole_archive"]);
     staticLibraries = concatLibsFromArtifacts(staticLibraries, inputs.staticlibrary);
-    var dynamicLibsFromInputs = inputs.dynamiclibrary_copy
-            ? inputs.dynamiclibrary_copy.map(function(a) { return a.filePath; }) : [];
+    var dynamicLibsFromInputs = libsFromInputs(inputs.dynamiclibrary_copy, ["dynamiclibrary_copy"]);
+    var weakDynamicLibsFromInputs = libsFromInputs(inputs.dynamiclibrary_copy, ["dynamiclibrary_weak"]);
     dynamicLibraries = concatLibsFromArtifacts(dynamicLibraries, inputs.dynamiclibrary_copy);
 
     // Flags for library search paths
@@ -65,7 +78,9 @@ function linkerFlags(product, inputs) {
         args = args.concat(linkerScripts.map(function(path) { return '-T' + path }));
 
     for (i in staticLibraries) {
-        if (staticLibsFromInputs.contains(staticLibraries[i]) || File.exists(staticLibraries[i])) {
+        if (wholeStaticLibsFromInputs.contains(staticLibraries[i])) {
+            args.push("-Wl,--whole-archive", staticLibraries[i], "-Wl,--no-whole-archive");
+        } else if (staticLibsFromInputs.contains(staticLibraries[i]) || File.exists(staticLibraries[i])) {
             args.push(staticLibraries[i]);
         } else {
             args.push('-l' + staticLibraries[i]);
@@ -73,12 +88,19 @@ function linkerFlags(product, inputs) {
     }
 
     for (i in dynamicLibraries) {
-        if (dynamicLibsFromInputs.contains(dynamicLibraries[i])
+        if (weakDynamicLibsFromInputs.contains(dynamicLibraries[i])
+                && product.moduleProperty("qbs", "targetOS").contains("darwin")) {
+            args.push("-weak_library", dynamicLibraries[i]);
+        } else if (dynamicLibsFromInputs.contains(dynamicLibraries[i])
                 || File.exists(dynamicLibraries[i])) {
             args.push(dynamicLibraries[i]);
         } else {
             args.push('-l' + dynamicLibraries[i]);
         }
+    }
+
+    for (i in weakDynamicLibraries) {
+        args.push("-weak_library", weakDynamicLibraries[i]);
     }
 
     for (i in frameworks) {

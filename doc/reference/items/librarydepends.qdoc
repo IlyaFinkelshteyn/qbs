@@ -1,6 +1,5 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 Jake Petroules.
 ** Copyright (C) 2015 The Qt Company Ltd.
 ** Contact: http://www.qt.io/licensing
 **
@@ -30,14 +29,39 @@
 ****************************************************************************/
 /*!
     \contentspage list-of-items.html
-    \page loadablemodule-item.html
-    \previouspage librarydepends-item.html
-    \nextpage module-item.html
+    \previouspage javajarfile-item.html
+    \page librarydepends-item.html
+    \nextpage loadablemodule-item.html
     \ingroup list-of-items
 
-    \title LoadableModule Item
-    \brief Represents a product that is a loadable module.
+    \title LibraryDepends Item
+    \brief Represents a dependency on a library.
 
-    A \c LoadableModule item is a \c Product that has its type set to "loadablemodule". It exists
-    for the convenience of project file authors.
+    A \c LibraryDepends is a convenience item that extends the \c Depends item by providing
+    properties specific to a dependency on a library.
+
+
+    \section1 LibraryDepends Properties
+
+    \table
+    \header
+        \li Property
+        \li Type
+        \li Default
+        \li Description
+    \row
+        \li linkType
+        \li string
+        \li \c{"strong"}
+        \li Determines how to link to the library. The following values are supported:
+            \list
+                \li \b strong - Links the library normally. Default.
+                \li \b weak - Weak-link the library. This is only supported for shared libraries on
+                Apple platforms and is otherwise equivalent to \c{"strong"}.
+                \li \b whole-archive - Link an entire static library. This is only supported for
+                static libraries and is otherwise equivalent to \c{"strong"}.
+                \li \b none - Does not link the library. Normally used for plugin dependencies.
+            \endlist
+    \endtable
+
 */

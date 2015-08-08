@@ -204,6 +204,46 @@
             Possible values: \c{"xml1"}, \c{"binary1"}, \c{"json"}, \c{"same-as-input"}
     \endtable
 
+    \section1 Bundle Embedding Properties
+
+    Properties used to control how bundles are embedded within one another. Typically only set in a
+    \c Depends item.
+
+    \table
+    \header
+        \li Property
+        \li Type
+        \li Since
+        \li Default
+        \li Description
+    \row
+        \li embed
+        \li bool
+        \li 1.5
+        \li \c true
+        \li Whether to embed the dependency in the enclosing product. If the enclosing product is
+            not a bundle, has no effect. This property is only used on Apple platforms.
+    \row
+        \li embedSubPath
+        \li string
+        \li 1.5
+        \li determined automatically
+        \li Location within the enclosing product's bundle that the dependency will be embedded at.
+            This path is relative to the path of the enclosing product bundle's wrapper. If the
+            \c embed property is \c false or the enclosing product is not a bundle, has no
+            effect. This property is only used on Apple platforms.
+    \row
+        \li codeSignOnCopy
+        \li bool
+        \li 1.5
+        \li \c true
+        \li Whether to code sign the dependency after embedding it in the enclosing product's
+            bundle, using the enclosing product's code signing settings. If the \c embed property is
+            \c false, the enclosing product is not a bundle, or the dependency is not a kind of
+            product that can be code signed, has no effect. This property is only used on Apple
+            platforms.
+    \endtable
+
     \section1 Path Specific Properties
 
     All properties in this section are read-only properties of type \c{string} specifying file paths

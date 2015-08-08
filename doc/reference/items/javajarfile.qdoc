@@ -31,7 +31,7 @@
     \contentspage list-of-items.html
     \page javajarfile-item.html
     \previouspage javaclasscollection-item.html
-    \nextpage loadablemodule-item.html
+    \nextpage librarydepends-item.html
     \ingroup list-of-items
 
     \title JavaJarFile Item

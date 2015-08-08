@@ -153,6 +153,11 @@ Module {
         return bundleName;
     }
 
+    // semi-private properties
+    property bool embed: false
+    property string embedSubPath // can't set defaults here because they depend on the dependent product
+    property bool codeSignOnCopy: true
+
     // private properties
     readonly property bool isShallowContents: product.type.contains("inapppurchase")
 
