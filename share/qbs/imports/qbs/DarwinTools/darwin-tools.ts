@@ -27,12 +27,14 @@
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ****************************************************************************/
-var FileInfo = require("../FileInfo/fileinfo");
+
+import FileInfo = require("../FileInfo/fileinfo");
+
 /**
     * Returns the numeric identifier corresponding to an Apple device name
     * (i.e. for use by TARGETED_DEVICE_FAMILY).
     */
-function appleDeviceNumber(deviceName) {
+export function appleDeviceNumber(deviceName: string) {
     if (deviceName === "mac") {
         return undefined; // only iOS devices have an ID
     } else if (deviceName === "iphone") {
@@ -47,69 +49,69 @@ function appleDeviceNumber(deviceName) {
         return 5;
     }
 }
-exports.appleDeviceNumber = appleDeviceNumber;
+
 /**
     * Returns the list of target devices available for the given qbs target OS list.
     */
-function targetDevices(targetOS) {
+function targetDevices(targetOS: string[]) {
     if (targetOS.contains("osx"))
-        return [ "mac" ];
+        return ["mac"];
     if (targetOS.contains("ios"))
-        return [ "iphone", "ipad" ];
+        return ["iphone", "ipad"];
     if (targetOS.contains("watchos"))
-        return [ "watch" ];
+        return ["watch"];
 }
+
 /**
     * Returns the TARGETED_DEVICE_FAMILY string given a list of target device names.
     */
-function targetedDeviceFamily(deviceNames) {
+export function targetedDeviceFamily(deviceNames: string[]) {
     return deviceNames.map(function(deviceName) {
-                          return appleDeviceNumber(deviceName);
-                      })
-        .join(",");
+        return appleDeviceNumber(deviceName);
+    }).join(",");
 }
-exports.targetedDeviceFamily = targetedDeviceFamily;
+
 /**
     * Returns the most appropriate Apple platform name given a targetOS list.
     * Possible platform names include macosx, iphoneos, and iphonesimulator.
     */
-function applePlatformName(targetOSList) {
+export function applePlatformName(targetOSList: string[]) {
     if (targetOSList.contains("ios-simulator"))
         return "iphonesimulator";
     else if (targetOSList.contains("ios"))
         return "iphoneos";
     else if (targetOSList.contains("osx"))
         return "macosx";
-    throw("No Apple platform corresponds to target OS list: " + targetOSList);
+    throw ("No Apple platform corresponds to target OS list: " + targetOSList);
 }
-exports.applePlatformName = applePlatformName;
+
 /**
     * Replace characters unsafe for use in a domain name with a '-' character (RFC 1034).
     */
-function rfc1034(inStr) {
+export function rfc1034(inStr: string) {
     // ### Remove in Qbs 1.5
     print("WARNING: DarwinTools.rfc1034 is deprecated; use qbs.rfc1034Identifier instead");
     return qbs.rfc1034Identifier(inStr);
 }
-exports.rfc1034 = rfc1034;
+
 /**
     * Returns the localization of the resource at the given path,
     * or undefined if the path does not contain an {xx}.lproj path segment.
     */
-function localizationKey(path) {
+export function localizationKey(path: string) {
     return _resourceFileProperties(path)[0];
 }
-exports.localizationKey = localizationKey;
+
 /**
     * Returns the path of a localized resource at the given path,
     * relative to its containing {xx}.lproj directory, or '.'
     * if the resource is unlocalized (not contained in an lproj directory).
     */
-function relativeResourcePath(path) {
+export function relativeResourcePath(path: string) {
     return _resourceFileProperties(path)[1];
 }
-exports.relativeResourcePath = relativeResourcePath;
-function _resourceFileProperties(path) {
+
+function _resourceFileProperties(path: string): [string, string] {
     var lprojKey = ".lproj/";
     var lproj = path.indexOf(lprojKey);
     if (lproj >= 0) {
@@ -118,11 +120,13 @@ function _resourceFileProperties(path) {
         if (slashIndex >= 0) {
             var localizationKey = path.slice(slashIndex + 1, lproj);
             var relativeResourcePath = FileInfo.path(path.slice(lproj + lprojKey.length));
-            return [ localizationKey, relativeResourcePath ];
+            return [localizationKey, relativeResourcePath];
         }
     }
-    return [ undefined, '.' ];
+
+    return [undefined, '.'];
 }
+
 /**
     * Recursively perform variable replacements in an environment dictionary.
     *
@@ -131,19 +135,20 @@ function _resourceFileProperties(path) {
     *    Warning undefined variable  k  in variable expansion
     * => {"a":"X3$Y","b":{"t":"%Y $(k)"}}
     */
-function expandPlistEnvironmentVariables(obj, env, warn) {
+export function expandPlistEnvironmentVariables(obj: { [key: string]: any }, env: { [key: string]: string }, warn: boolean) {
     // Possible syntaxes for wrapping an environment variable name
     var syntaxes = [
-        {"open" : "${", "close" : "}"},
-        {"open" : "$(", "close" : ")"},
-        {"open" : "@", "close" : "@"}
+        { "open": "${", "close": "}" },
+        { "open": "$(", "close": ")" },
+        { "open": "@", "close": "@" }
     ];
+
     /**
         * Finds the first index of a replacement starting with one of the supported syntaxes
         * This is needed so we don't do recursive substitutions
         */
-    function indexOfReplacementStart(syntaxes, str, offset) {
-        var syntax;
+    function indexOfReplacementStart(syntaxes: { "open": string, "close": string }[], str: string, offset?: number) {
+        var syntax: { "open": string, "close": string };
         var idx = str.length;
         for (var i in syntaxes) {
             var j = str.indexOf(syntaxes[i].open, offset);
@@ -152,13 +157,14 @@ function expandPlistEnvironmentVariables(obj, env, warn) {
                 idx = j;
             }
         }
-        return {"syntax" : syntax, "index" : idx === str.length ? -1 : idx};
+        return { "syntax": syntax, "index": idx === str.length ? -1 : idx };
     }
-    function expandRecursive(obj, env, checked) {
+
+    function expandRecursive(obj: { [key: string]: any }, env: { [key: string]: string }, checked: { [key: string]: any }[]) {
         checked.push(obj);
         for (var key in obj) {
             var value = obj[key];
-            var type = typeof(value);
+            var type = typeof (value);
             if (type === "object") {
                 if (checked.indexOf(value) !== -1)
                     continue;
@@ -188,8 +194,7 @@ function expandPlistEnvironmentVariables(obj, env, warn) {
                         varFormatter = varFormatter.toLowerCase();
                     if (varFormatter === "rfc1034identifier")
                         varValue = qbs.rfc1034Identifier(varValue);
-                    value =
-                        value.slice(0, i) + varValue + value.slice(j + repl.syntax.close.length);
+                    value = value.slice(0, i) + varValue + value.slice(j + repl.syntax.close.length);
                     // avoid recursive substitutions to avoid potentially infinite loops
                     i += varValue.length;
                 }
@@ -203,13 +208,14 @@ function expandPlistEnvironmentVariables(obj, env, warn) {
     expandRecursive(obj, env, []);
     return obj;
 }
-exports.expandPlistEnvironmentVariables = expandPlistEnvironmentVariables;
+
 /**
     * Recursively removes any undefined, null, or empty string values from the property list.
     */
-function cleanPropertyList(plist) {
-    if (typeof(plist) !== "object")
+export function cleanPropertyList(plist: { [key: string]: any }) {
+    if (typeof (plist) !== "object")
         return;
+
     for (var key in plist) {
         if (plist[key] === undefined || plist[key] === null || plist[key] === "")
             delete plist[key];
@@ -217,4 +223,3 @@ function cleanPropertyList(plist) {
             cleanPropertyList(plist[key]);
     }
 }
-exports.cleanPropertyList = cleanPropertyList;

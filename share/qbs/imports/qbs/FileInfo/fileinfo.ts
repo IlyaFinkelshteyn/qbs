@@ -27,34 +27,38 @@
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ****************************************************************************/
+
 var _windowsAbsolutePathPattern = new RegExp("^[a-z,A-Z]:[/,\\\\]");
 var _removeDoubleSlashesPattern = new RegExp("/{2,}", "g");
-function path(fp) {
+
+export function path(fp: string) {
     if (fp === '/')
         return fp;
+
     // Yes, this will be wrong for "clever" unix users calling their directory 'c:'. Boohoo.
     if (fp.length === 3 && fp.slice(-2) === ":/")
         return fp;
+
     var last = fp.lastIndexOf('/');
     if (last < 0)
         return '.';
     return fp.slice(0, last);
 }
-exports.path = path;
-function fileName(fph) {
+
+export function fileName(fph: string) {
     var fp = fph.toString();
     var last = fp.lastIndexOf('/');
     if (last < 0)
         return fp;
     return fp.slice(last + 1);
 }
-exports.fileName = fileName;
-function baseName(fph) {
+
+export function baseName(fph: string) {
     var fn = fileName(fph);
     return fn.split('.')[0];
 }
-exports.baseName = baseName;
-function completeBaseName(fph) {
+
+export function completeBaseName(fph: string) {
     var fn = fileName(fph);
     var last = fn.lastIndexOf('.');
     if (last < 0)
@@ -62,11 +66,11 @@ function completeBaseName(fph) {
     else
         return fn.slice(0, last);
 }
-exports.completeBaseName = completeBaseName;
-function relativePath(base, rel) {
+
+export function relativePath(base: string, rel: string) {
     var basel = base.split('/');
     var rell = rel.split('/');
-    var i;
+    var i: number;
     for (i = basel.length; i-- >= 0;) {
         if (basel[i] === '.' || basel[i] === '')
             basel.splice(i, 1);
@@ -75,49 +79,51 @@ function relativePath(base, rel) {
         if (rell[i] === '.' || rell[i] === '')
             rell.splice(i, 1);
     }
+
     i = 0;
     while (i < basel.length && i < rell.length && basel[i] === rell[i])
         i++;
+
     var j = i;
-    var r = [];
+    var r: string[] = [];
+
     for (; i < basel.length; i++)
         r.push("..");
+
     for (; j < rell.length; j++)
         r.push(rell[j]);
+
     return r.join('/');
 }
-exports.relativePath = relativePath;
-function isAbsolutePath(path) {
+
+export function isAbsolutePath(path: string) {
     if (!path)
         return false;
     return (path.charAt(0) === '/' || _windowsAbsolutePathPattern.test(path));
 }
-exports.isAbsolutePath = isAbsolutePath;
-function toWindowsSeparators(str) {
+
+export function toWindowsSeparators(str: string) {
     return str.toString().replace(/\//g, '\\');
 }
-exports.toWindowsSeparators = toWindowsSeparators;
-function fromWindowsSeparators(str) {
+
+export function fromWindowsSeparators(str: string) {
     return str.toString().replace(/\\/g, '/');
 }
-exports.fromWindowsSeparators = fromWindowsSeparators;
-function toNativeSeparators(str, os) {
+
+export function toNativeSeparators(str: string, os: string[]): string {
     return os.contains("windows") ? toWindowsSeparators(str) : str;
 }
-exports.toNativeSeparators = toNativeSeparators;
-function fromNativeSeparators(str, os) {
+
+export function fromNativeSeparators(str: string, os: string[]): string {
     return os.contains("windows") ? fromWindowsSeparators(str) : str;
 }
-exports.fromNativeSeparators = fromNativeSeparators;
-function joinPaths() {
-    var paths = [];
-    for (var _i = 0; _i < arguments.length; _i++) {
-        paths[_i - 0] = arguments[_i];
-    }
-    function pathFilter(path) {
+
+export function joinPaths(...paths: string[]) {
+    function pathFilter(path: string) {
         return path && typeof path === "string";
     }
+
     var joinedPaths = paths.filter(pathFilter).join('/');
+
     return joinedPaths.replace(_removeDoubleSlashesPattern, '/');
 }
-exports.joinPaths = joinPaths;

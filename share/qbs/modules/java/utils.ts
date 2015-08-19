@@ -27,33 +27,39 @@
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ****************************************************************************/
-// var File = loadExtension("qbs.File");
-var FileInfo = require("../../imports/qbs/FileInfo/fileinfo");
-var ModUtils = require("../../imports/qbs/ModUtils/utils");
-// var Process = loadExtension("qbs.Process");
-function findJdkPath(hostOS, arch, environmentPaths, searchPaths) {
+
+//var File = loadExtension("qbs.File");
+import FileInfo = require("../../imports/qbs/FileInfo/fileinfo");
+import ModUtils = require("../../imports/qbs/ModUtils/utils");
+//var Process = loadExtension("qbs.Process");
+
+function findJdkPath(hostOS: string[], arch, environmentPaths, searchPaths) {
     var i;
     for (var key in environmentPaths) {
         if (environmentPaths[key]) {
             return environmentPaths[key];
         }
     }
+
     if (hostOS.contains("windows")) {
         var keys = [
             "HKEY_LOCAL_MACHINE\\SOFTWARE\\JavaSoft\\Java Development Kit",
             "HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\JavaSoft\\Java Development Kit"
         ];
+
         for (i in keys) {
             var current = qbs.getNativeSetting(keys[i], "CurrentVersion"); // 1.8 etc.
             if (current) {
-                var home = qbs.getNativeSetting([ keys[i], current ].join("\\"), "JavaHome");
+                var home = qbs.getNativeSetting([keys[i], current].join("\\"), "JavaHome");
                 if (home) {
                     return home;
                 }
             }
         }
+
         return undefined;
     }
+
     if (hostOS.contains("osx")) {
         var p = new Process();
         try {
@@ -62,30 +68,35 @@ function findJdkPath(hostOS, arch, environmentPaths, searchPaths) {
             if (arch) {
                 args.push("--arch", arch === "x86" ? "i386" : arch);
             }
+
             // --failfast doesn't print the default JVM if nothing matches the filter(s).
-            var status = p.exec("/usr/libexec/java_home", args.concat([ "--failfast" ]));
+            var status = p.exec("/usr/libexec/java_home", args.concat(["--failfast"]));
             return status === 0 ? p.readStdOut().trim() : undefined;
         } finally {
             p.close();
         }
     }
+
     if (hostOS.contains("unix")) {
-        var requiredTools = [ "javac", "java", "jar" ];
+        var requiredTools = ["javac", "java", "jar"];
         for (i = 0; i < searchPaths.length; ++i) {
             function fullToolPath(tool) {
                 return FileInfo.joinPaths(searchPaths[i], "bin", tool);
             }
+
             if (requiredTools.map(fullToolPath).every(File.exists)) {
                 return searchPaths[i];
             }
         }
+
         return undefined;
     }
 }
-function findJdkVersion(compilerFilePath) {
+
+function findJdkVersion(compilerFilePath: string) {
     var p = new Process();
     try {
-        p.exec(compilerFilePath, [ "-version" ]);
+        p.exec(compilerFilePath, ["-version"]);
         var re = /^javac (([0-9]+(?:\.[0-9]+){2,2})_([0-9]+))$/m;
         var match = p.readStdErr().trim().match(re);
         if (match !== null)
@@ -94,6 +105,7 @@ function findJdkVersion(compilerFilePath) {
         p.close();
     }
 }
+
 function supportsGeneratedNativeHeaderFiles(product) {
     var compilerVersionMajor = ModUtils.moduleProperty(product, "compilerVersionMajor");
     if (compilerVersionMajor === 1) {
@@ -101,37 +113,38 @@ function supportsGeneratedNativeHeaderFiles(product) {
             return true;
         }
     }
+
     return compilerVersionMajor > 1;
 }
+
 function javacArguments(product, inputs, overrides) {
     function getModuleProperty(product, propertyName, overrides) {
         if (overrides && overrides[propertyName])
             return overrides[propertyName];
         return ModUtils.moduleProperty(product, propertyName);
     }
+
     function getModuleProperties(product, propertyName, overrides) {
         if (overrides && overrides[propertyName])
             return overrides[propertyName];
         return ModUtils.moduleProperties(product, propertyName);
     }
+
     var i;
     var outputDir = getModuleProperty(product, "classFilesDir", overrides);
-    var classPaths = [ outputDir ];
+    var classPaths = [outputDir];
     var additionalClassPaths = getModuleProperty(product, "additionalClassPaths", overrides);
     if (additionalClassPaths)
         classPaths = classPaths.concat(additionalClassPaths);
     for (i in inputs["java.jar"])
         classPaths.push(inputs["java.jar"][i].filePath);
-    var debugArg = product.moduleProperty("qbs", "buildVariant") === "debug" ? "-g" : "-g:none";
+    var debugArg = product.moduleProperty("qbs", "buildVariant") === "debug"
+        ? "-g" : "-g:none";
     var pathListSeparator = product.moduleProperty("qbs", "pathListSeparator");
     var args = [
-        "-classpath",
-        classPaths.join(pathListSeparator),
-        "-s",
-        product.buildDirectory,
-        debugArg,
-        "-d",
-        outputDir
+        "-classpath", classPaths.join(pathListSeparator),
+        "-s", product.buildDirectory,
+        debugArg, "-d", outputDir
     ];
     if (supportsGeneratedNativeHeaderFiles(product))
         args.push("-h", product.buildDirectory);
@@ -157,6 +170,7 @@ function javacArguments(product, inputs, overrides) {
         args.push(inputs["java.java-internal"][i].filePath);
     return args;
 }
+
 /**
     * Returns a list of fully qualified Java class names for the compiler helper tool.
     *
@@ -187,15 +201,17 @@ function helperFullyQualifiedNames(type) {
         return names;
     }
 }
+
 function helperOutputArtifacts(product) {
     return helperFullyQualifiedNames("class").map(function(name) {
         return {
-            filePath : FileInfo.joinPaths(ModUtils.moduleProperty(product, "internalClassFilesDir"),
-                                          name + ".class"),
-            fileTags : [ "java.class-internal" ]
+            filePath: FileInfo.joinPaths(ModUtils.moduleProperty(product, "internalClassFilesDir"),
+                name + ".class"),
+            fileTags: ["java.class-internal"]
         };
     });
 }
+
 function helperOverrideArgs(product, tool) {
     var overrides = {};
     if (tool === "javac") {
@@ -203,48 +219,51 @@ function helperOverrideArgs(product, tool) {
         // compiled with. Both are irrelevant here since the resulting tool will only be run
         // with the same JDK as it was built with, and we know in advance the source is
         // compatible with all Java language versions from 1.6 and above.
-        var jdkVersion = [
-            ModUtils.moduleProperty(product, "compilerVersionMajor"),
-            ModUtils.moduleProperty(product, "compilerVersionMinor")
-        ].join(".");
+        var jdkVersion = [ModUtils.moduleProperty(product, "compilerVersionMajor"),
+            ModUtils.moduleProperty(product, "compilerVersionMinor")].join(".");
         overrides["languageVersion"] = jdkVersion;
         overrides["runtimeVersion"] = jdkVersion;
+
         // Build the helper tool's class files separately from the actual product's class files
         overrides["classFilesDir"] = ModUtils.moduleProperty(product, "internalClassFilesDir");
     }
+
     // Inject the current JDK's runtime classes into the boot class path when building/running the
     // dependency scanner. This is normally not necessary but is important for Android platforms
     // where android.jar is the only JAR on the boot classpath and JSR 199 is unavailable.
-    overrides["bootClassPaths"] = [ ModUtils.moduleProperty(product, "runtimeJarPath") ].concat(
+    overrides["bootClassPaths"] = [ModUtils.moduleProperty(product, "runtimeJarPath")].concat(
         ModUtils.moduleProperties(product, "bootClassPaths"));
     return overrides;
 }
+
 function outputArtifacts(product, inputs) {
     // Handle the case where a product depends on Java but has no Java sources
     if (!inputs["java.java"] || inputs["java.java"].length === 0)
         return [];
+
     // We need to ensure that the output directory is created first, because the Java compiler
     // internally checks that it is present before performing any actions
     File.makePath(ModUtils.moduleProperty(product, "classFilesDir"));
+
     var process;
     try {
         process = new Process();
         process.setWorkingDirectory(
             FileInfo.joinPaths(ModUtils.moduleProperty(product, "internalClassFilesDir")));
-        process.exec(
-            ModUtils.moduleProperty(product, "interpreterFilePath"),
-            [ "io/qt/qbs/tools/JavaCompilerScannerTool", "--output-format", "json" ].concat(
-                javacArguments(product, inputs, helperOverrideArgs(product))),
-            true);
+        process.exec(ModUtils.moduleProperty(product, "interpreterFilePath"),
+            ["io/qt/qbs/tools/JavaCompilerScannerTool", "--output-format", "json"]
+                .concat(javacArguments(product, inputs, helperOverrideArgs(product))), true);
         return JSON.parse(process.readStdOut());
     } finally {
         if (process)
             process.close();
     }
 }
+
 function manifestContents(filePath) {
     if (filePath === undefined)
         return undefined;
+
     var contents, file;
     try {
         file = new TextFile(filePath);
@@ -254,6 +273,7 @@ function manifestContents(filePath) {
             file.close();
         }
     }
+
     if (contents) {
         var dict = {};
         var lines = contents.split(/\r?\n/g);
@@ -263,6 +283,7 @@ function manifestContents(filePath) {
                 return undefined;
             dict[kv[0]] = kv[1];
         }
+
         return dict;
     }
 }

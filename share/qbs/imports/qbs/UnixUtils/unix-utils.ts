@@ -27,36 +27,32 @@
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ****************************************************************************/
-function characterSetDefines(charset) {
-    var defines = [];
-    if (charset === "unicode")
-        defines.push("UNICODE", "_UNICODE");
-    else if (charset === "mbcs")
-        defines.push("_MBCS");
-    return defines;
-}
-exports.characterSetDefines = characterSetDefines;
-function isValidWindowsVersion(systemVersion) {
-    // Add new Windows versions to this list when they are released
-    var realVersions = [ '6.3', '6.2', '6.1', '6.0', '5.2', '5.1', '5.0', '4.0' ];
-    for (var i in realVersions)
-        if (systemVersion === realVersions[i])
-            return true;
-    return false;
-}
-exports.isValidWindowsVersion = isValidWindowsVersion;
-function getWindowsVersionInFormat(systemVersion, format) {
-    if (!isValidWindowsVersion(systemVersion))
-        return undefined;
-    var major = parseInt(systemVersion.split('.')[0]);
-    var minor = parseInt(systemVersion.split('.')[1]);
-    if (format === 'hex') {
-        return '0x' + major + (minor < 10 ? '0' : '') + minor;
-    } else if (format === 'subsystem') {
-        // http://msdn.microsoft.com/en-us/library/fcc1zstk.aspx
-        return major + '.' + (minor < 10 ? '0' : '') + minor;
-    } else {
-        throw("Unrecognized Windows version format " + format + ". Must be in {hex, subsystem}.");
+
+import FileInfo = require("../FileInfo/fileinfo");
+
+export function soname(product: Product, outputFileName: string) {
+    if (product.moduleProperty<string>("qbs", "targetOS").contains("darwin")) {
+        if (product.moduleProperty("bundle", "isBundle"))
+            outputFileName = product.moduleProperty<string>("bundle", "executablePath");
+        var prefix = product.moduleProperty<string>("cpp", "installNamePrefix");
+        if (prefix)
+            outputFileName = FileInfo.joinPaths(prefix, outputFileName);
+        return outputFileName;
     }
+
+    function majorVersion(version: string, defaultValue?: number) {
+        var n = parseInt(version, 10);
+        return isNaN(n) ? defaultValue : n;
+    }
+
+    var version = product.moduleProperty<string>("cpp", "internalVersion");
+    if (version) {
+        var major = majorVersion(version);
+        if (major) {
+            return outputFileName.substr(0, outputFileName.length - version.length)
+                + major;
+        }
+    }
+    return outputFileName;
 }
-exports.getWindowsVersionInFormat = getWindowsVersionInFormat;
+

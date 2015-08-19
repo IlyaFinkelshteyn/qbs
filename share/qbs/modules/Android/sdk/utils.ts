@@ -27,12 +27,14 @@
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ****************************************************************************/
-// var File = loadExtension("qbs.File");
-var FileInfo = require("../../../imports/qbs/FileInfo/fileinfo");
-// var TextFile = loadExtension("qbs.TextFile");
-function sourceAndTargetFilePathsFromInfoFiles(inputs, product, inputTag) {
-    var sourceFilePaths = [];
-    var targetFilePaths = [];
+
+//var File = loadExtension("qbs.File");
+import FileInfo = require("../../../imports/qbs/FileInfo/fileinfo");
+//var TextFile = loadExtension("qbs.TextFile");
+
+export function sourceAndTargetFilePathsFromInfoFiles(inputs: ArtifactMap, product: Product, inputTag: string) {
+    var sourceFilePaths: string[] = [];
+    var targetFilePaths: string[] = [];
     var inputsLength = inputs[inputTag] ? inputs[inputTag].length : 0;
     for (var i = 0; i < inputsLength; ++i) {
         var infoFile = new TextFile(inputs[inputTag][i].filePath, TextFile.ReadOnly);
@@ -44,21 +46,21 @@ function sourceAndTargetFilePathsFromInfoFiles(inputs, product, inputTag) {
         }
         infoFile.close();
     }
-    return {sourcePaths : sourceFilePaths, targetPaths : targetFilePaths};
+    return { sourcePaths: sourceFilePaths, targetPaths: targetFilePaths };
 }
-exports.sourceAndTargetFilePathsFromInfoFiles = sourceAndTargetFilePathsFromInfoFiles;
-function outputArtifactsFromInfoFiles(inputs, product, inputTag, outputTag) {
-    var pathSpecs = sourceAndTargetFilePathsFromInfoFiles(inputs, product, inputTag);
-    var artifacts = [];
+
+export function outputArtifactsFromInfoFiles(inputs: ArtifactMap, product: Product, inputTag: string, outputTag: string) {
+    var pathSpecs = sourceAndTargetFilePathsFromInfoFiles(inputs, product, inputTag)
+    var artifacts: Artifact[] = [];
     for (var i = 0; i < pathSpecs.targetPaths.length; ++i)
-        artifacts.push({filePath : pathSpecs.targetPaths[i], fileTags : [ outputTag ]});
+        artifacts.push({ filePath: pathSpecs.targetPaths[i], fileTags: [outputTag] });
     return artifacts;
 }
-exports.outputArtifactsFromInfoFiles = outputArtifactsFromInfoFiles;
-function availableSdkPlatforms(sdkDir) {
+
+export function availableSdkPlatforms(sdkDir: string) {
     var re = /^android-([0-9]+)$/;
     var platforms = File.directoryEntries(FileInfo.joinPaths(sdkDir, "platforms"),
-                                          File.Dirs | File.NoDotAndDotDot);
+        File.Dirs | File.NoDotAndDotDot);
     var versions = [];
     for (var i = 0; i < platforms.length; ++i) {
         var match = platforms[i].match(re);
@@ -66,16 +68,17 @@ function availableSdkPlatforms(sdkDir) {
             versions.push(platforms[i]);
         }
     }
+
     versions.sort(function(a, b) {
         return parseInt(a.match(re)[1], 10) - parseInt(b.match(re)[1], 10);
     });
     return versions;
 }
-exports.availableSdkPlatforms = availableSdkPlatforms;
-function availableBuildToolsVersions(sdkDir) {
+
+export function availableBuildToolsVersions(sdkDir) {
     var re = /^([0-9]+)\.([0-9]+)\.([0-9]+)$/;
     var buildTools = File.directoryEntries(FileInfo.joinPaths(sdkDir, "build-tools"),
-                                           File.Dirs | File.NoDotAndDotDot);
+        File.Dirs | File.NoDotAndDotDot);
     var versions = [];
     for (var i = 0; i < buildTools.length; ++i) {
         var match = buildTools[i].match(re);
@@ -83,14 +86,16 @@ function availableBuildToolsVersions(sdkDir) {
             versions.push(buildTools[i]);
         }
     }
+
     // Sort by version number
     versions.sort(function(a, b) {
         a = a.match(re);
         if (a)
-            a = {major : a[1], minor : a[2], patch : a[3]};
+            a = { major: a[1], minor: a[2], patch: a[3] };
         b = b.match(re);
         if (b)
-            b = {major : b[1], minor : b[2], patch : a[3]};
+            b = { major: b[1], minor: b[2], patch: a[3] };
+
         if (a.major === b.major) {
             if (a.minor === b.minor)
                 return a.patch - b.patch;
@@ -98,6 +103,6 @@ function availableBuildToolsVersions(sdkDir) {
         }
         return a.major - b.major;
     });
+
     return versions;
 }
-exports.availableBuildToolsVersions = availableBuildToolsVersions;

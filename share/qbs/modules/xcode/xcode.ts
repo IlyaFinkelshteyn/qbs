@@ -27,10 +27,12 @@
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ****************************************************************************/
-// var File = loadExtension("qbs.File");
-var FileInfo = require("../../imports/qbs/FileInfo/fileinfo");
-// var Process = loadExtension("qbs.Process");
-// var PropertyList = loadExtension("qbs.PropertyList");
+
+//var File = loadExtension("qbs.File");
+import FileInfo = require("../../imports/qbs/FileInfo/fileinfo");
+//var Process = loadExtension("qbs.Process");
+//var PropertyList = loadExtension("qbs.PropertyList");
+
 function applePlatformDirectoryName(targetOSList, version, throwOnError) {
     if (!version)
         version = "";
@@ -45,8 +47,9 @@ function applePlatformDirectoryName(targetOSList, version, throwOnError) {
     else if (targetOSList.contains("watchos-simulator"))
         return "WatchSimulator" + version;
     if (throwOnError || throwOnError === undefined)
-        throw("No Apple platform corresponds to target OS list: " + targetOSList);
+        throw ("No Apple platform corresponds to target OS list: " + targetOSList);
 }
+
 function sdkInfoList(sdksPath) {
     var sdkInfo = [];
     var sdks = File.directoryEntries(sdksPath, File.Dirs | File.NoDotAndDotDot);
@@ -55,54 +58,63 @@ function sdkInfoList(sdksPath) {
         // we don't want the versionless iPhoneOS.sdk directory for example
         if (!sdks[i].match(/[0-9]+/))
             continue;
+
         var settingsPlist = FileInfo.joinPaths(sdksPath, sdks[i], "SDKSettings.plist");
         var propertyList = new PropertyList();
         try {
             propertyList.readFromFile(settingsPlist);
+
             function checkPlist(plist) {
                 if (!plist || !plist["CanonicalName"] || !plist["Version"])
                     return false;
+
                 var re = /^([0-9]+)\.([0-9]+)$/;
                 return plist["Version"].match(re);
             }
+
             var plist = propertyList.toObject();
             if (!checkPlist(plist)) {
-                print("WARNING: Skipping corrupted SDK installation: " +
-                      FileInfo.joinPaths(sdksPath, sdks[i]));
+                print("WARNING: Skipping corrupted SDK installation: "
+                    + FileInfo.joinPaths(sdksPath, sdks[i]));
                 continue;
             }
+
             sdkInfo.push(plist);
         } finally {
             propertyList.clear();
         }
     }
+
     // Sort by SDK version number
     sdkInfo.sort(function(a, b) {
         var re = /^([0-9]+)\.([0-9]+)$/;
         a = a["Version"].match(re);
         if (a)
-            a = {major : a[1], minor : a[2]};
+            a = { major: a[1], minor: a[2] };
         b = b["Version"].match(re);
         if (b)
-            b = {major : b[1], minor : b[2]};
+            b = { major: b[1], minor: b[2] };
+
         if (a.major === b.major)
             return a.minor - b.minor;
         return a.major - b.major;
     });
+
     return sdkInfo;
 }
+
 function findSigningIdentities(security, searchString) {
     var process;
     var identities;
     if (searchString) {
         try {
             process = new Process();
-            if (process.exec(security, [ "find-identity", "-p", "codesigning", "-v" ], true) !== 0)
+            if (process.exec(security, ["find-identity", "-p", "codesigning", "-v"], true) !== 0)
                 print(process.readStdErr());
+
             var lines = process.readStdOut().split("\n");
             for (var i in lines) {
-                // e.g. 1) AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA "Mac Developer: John Doe
-                // (XXXXXXXXXX) john.doe@example.org"
+                // e.g. 1) AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA "Mac Developer: John Doe (XXXXXXXXXX) john.doe@example.org"
                 var match = lines[i].match(/^\s*[0-9]+\)\s+([A-Fa-f0-9]{40})\s+"([^"]+)"$/);
                 if (match !== null) {
                     var hexId = match[1];
@@ -110,7 +122,7 @@ function findSigningIdentities(security, searchString) {
                     if (hexId === searchString || displayName.startsWith(searchString)) {
                         if (!identities)
                             identities = [];
-                        identities.push([ hexId, displayName ]);
+                        identities.push([hexId, displayName]);
                         break;
                     }
                 }
@@ -121,14 +133,14 @@ function findSigningIdentities(security, searchString) {
     }
     return identities;
 }
+
 function readProvisioningProfileData(path) {
     var process;
     try {
         process = new Process();
-        if (process.exec("openssl",
-                         [ "smime", "-verify", "-noverify", "-inform", "DER", "-in", path ],
-                         true) !== 0)
+        if (process.exec("openssl", ["smime", "-verify", "-noverify", "-inform", "DER", "-in", path], true) !== 0)
             print(process.readStdErr());
+
         var propertyList = new PropertyList();
         try {
             propertyList.readFromString(process.readStdOut());

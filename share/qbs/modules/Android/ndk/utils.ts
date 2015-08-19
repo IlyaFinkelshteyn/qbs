@@ -27,76 +27,85 @@
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ****************************************************************************/
-function abiNameToDirName(abiName) {
+
+export function abiNameToDirName(abiName: string) {
     if (abiName.startsWith("armeabi"))
         return "arm";
     if (abiName.startsWith("arm64"))
         return "arm64";
     return abiName;
 }
-exports.abiNameToDirName = abiNameToDirName;
-function androidAbi(arch) {
+
+export function androidAbi(arch: string) {
     if (arch === "x86" || arch === "x86_64")
         return arch;
-    return {
-        "arm64": "arm64-v8a", "armv5": "armeabi", "armv7": "armeabi-v7a", "mipsel": "mips",
-            "mips64el": "mips64"
-    }
-    [arch];
+    return (<{ [key: string]: string }>{
+        "arm64": "arm64-v8a",
+        "armv5": "armeabi",
+        "armv7": "armeabi-v7a",
+        "mipsel": "mips",
+        "mips64el": "mips64"
+    })[arch];
 }
-exports.androidAbi = androidAbi;
-function commonCompilerFlags(buildVariant, abi, hardFloat, armMode) {
-    var flags = [
-        "-ffunction-sections",
-        "-funwind-tables",
-        "-no-canonical-prefixes",
-        "-Wa,--noexecstack",
-        "-Werror=format-security"
-    ];
+
+export function commonCompilerFlags(buildVariant: string, abi: string, hardFloat: boolean, armMode: string) {
+    var flags = ["-ffunction-sections", "-funwind-tables", "-no-canonical-prefixes",
+        "-Wa,--noexecstack", "-Werror=format-security"];
+
     if (buildVariant === "debug")
         flags.push("-fno-omit-frame-pointer", "-fno-strict-aliasing");
     if (buildVariant === "release")
         flags.push("-fomit-frame-pointer");
+
     if (abi === "arm64-v8a") {
         flags.push("-fpic", "-fstack-protector", "-funswitch-loops", "-finline-limit=300");
         if (buildVariant === "release")
             flags.push("-fstrict-aliasing");
     }
+
     if (abi === "armeabi" || abi === "armeabi-v7a") {
         flags.push("-fpic", "-fstack-protector", "-finline-limit=64");
+
         if (abi === "armeabi")
             flags.push("-march=armv5te", "-mtune=xscale", "-msoft-float");
+
         if (abi === "armeabi-v7a") {
             flags.push("-march=armv7-a", "-mfpu=vfpv3-d16");
             flags.push(hardFloat ? "-mhard-float" : "-mfloat-abi=softfp");
         }
+
         if (buildVariant === "release")
             flags.push("-fno-strict-aliasing");
     }
+
     if (abi === "mips" || abi === "mips64") {
         flags.push("-fpic", "-finline-functions", "-fmessage-length=0",
-                   "-fno-inline-functions-called-once", "-fgcse-after-reload",
-                   "-frerun-cse-after-loop", "-frename-registers");
+            "-fno-inline-functions-called-once", "-fgcse-after-reload",
+            "-frerun-cse-after-loop", "-frename-registers");
         if (buildVariant === "release")
             flags.push("-funswitch-loops", "-finline-limit=300", "-fno-strict-aliasing");
     }
+
     if (abi === "x86" || abi === "x86_64") {
         flags.push("-fstack-protector", "-funswitch-loops", "-finline-limit=300");
         if (buildVariant === "release")
             flags.push("-fstrict-aliasing");
     }
+
     if (armMode)
         flags.push("-m" + armMode);
+
     return flags;
 }
-exports.commonCompilerFlags = commonCompilerFlags;
-function commonLinkerFlags(abi, hardFloat) {
-    var flags = [ "-no-canonical-prefixes", "-Wl,-z,noexecstack", "-Wl,-z,relro", "-Wl,-z,now" ];
+
+export function commonLinkerFlags(abi: string, hardFloat: boolean) {
+    var flags = ["-no-canonical-prefixes", "-Wl,-z,noexecstack", "-Wl,-z,relro", "-Wl,-z,now"];
+
     if (abi === "armeabi-v7a") {
         flags.push("-march=armv7-a", "-Wl,--fix-cortex-a8");
         if (hardFloat)
             flags.push("-Wl,-no-warn-mismatch");
     }
+
     return flags;
 }
-exports.commonLinkerFlags = commonLinkerFlags;

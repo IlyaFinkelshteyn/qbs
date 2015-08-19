@@ -27,9 +27,11 @@
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ****************************************************************************/
-var FileInfo = require("../FileInfo/fileinfo");
-var DarwinTools = require("../DarwinTools/darwin-tools");
-function destinationDirectoryForResource(product, input) {
+
+import FileInfo = require("../FileInfo/fileinfo");
+import DarwinTools = require("../DarwinTools/darwin-tools");
+
+export function destinationDirectoryForResource(product: Product, input: Artifact) {
     var path = product.destinationDirectory;
     var inputFilePath = FileInfo.joinPaths(input.baseDir, input.fileName);
     var key = DarwinTools.localizationKey(inputFilePath);
@@ -39,21 +41,19 @@ function destinationDirectoryForResource(product, input) {
         if (subPath && subPath !== '.')
             path = FileInfo.joinPaths(path, subPath);
     } else {
-        path = FileInfo.joinPaths(
-            path, product.moduleProperty("bundle", "unlocalizedResourcesFolderPath"));
+        path = FileInfo.joinPaths(path, product.moduleProperty<string>("bundle", "unlocalizedResourcesFolderPath"));
     }
     return path;
 }
-exports.destinationDirectoryForResource = destinationDirectoryForResource;
-function localizedResourcesFolderPath(product, key) {
-    return FileInfo.joinPaths(
-        product.moduleProperty("bundle", "unlocalizedResourcesFolderPath"),
-        key + product.moduleProperty("bundle", "localizedResourcesFolderSuffix"));
+
+export function localizedResourcesFolderPath(product: Product, key: string) {
+    return FileInfo.joinPaths(product.moduleProperty<string>("bundle", "unlocalizedResourcesFolderPath"), key + product.moduleProperty<string>("bundle", "localizedResourcesFolderSuffix"));
 }
-exports.localizedResourcesFolderPath = localizedResourcesFolderPath;
-function infoPlistContents(infoPlistFilePath) {
+
+export function infoPlistContents(infoPlistFilePath: string) {
     if (infoPlistFilePath === undefined)
         return undefined;
+
     var plist = new PropertyList();
     try {
         plist.readFromFile(infoPlistFilePath);
@@ -62,10 +62,11 @@ function infoPlistContents(infoPlistFilePath) {
         plist.clear();
     }
 }
-exports.infoPlistContents = infoPlistContents;
-function infoPlistFormat(infoPlistFilePath) {
+
+export function infoPlistFormat(infoPlistFilePath: string) {
     if (infoPlistFilePath === undefined)
         return undefined;
+
     var plist = new PropertyList();
     try {
         plist.readFromFile(infoPlistFilePath);
@@ -74,4 +75,3 @@ function infoPlistFormat(infoPlistFilePath) {
         plist.clear();
     }
 }
-exports.infoPlistFormat = infoPlistFormat;

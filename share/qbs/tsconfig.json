@@ -1,0 +1,31 @@
+{
+	"compilerOptions": {
+		"module": "commonjs",
+		"noImplicitAny": false,
+		"declaration": true
+	},
+	"files": [
+		"imports/qbs/BundleTools/bundle-tools.ts",
+		"imports/qbs/DarwinTools/darwin-tools.ts",
+		"imports/qbs/FileInfo/fileinfo.ts",
+		"imports/qbs/ModUtils/utils.ts",
+		"imports/qbs/PathTools/path-tools.ts",
+		"imports/qbs/UnixUtils/unix-utils.ts",
+		"imports/qbs/WindowsUtils/windows-utils.ts",
+		"modules/Android/ndk/utils.ts",
+		"modules/Android/sdk/utils.ts",
+		"modules/cli/cli.ts",
+		"modules/cpp/gcc.ts",
+		"modules/cpp/msvc.ts",
+		"modules/ib/ib.ts",
+		"modules/java/utils.ts",
+		"modules/typescript/typescript.ts",
+		"modules/xcode/xcode.ts",
+		"typings/qbs/file.d.ts",
+		"typings/qbs/process.d.ts",
+		"typings/qbs/propertylist.d.ts",
+		"typings/qbs/temporarydir.d.ts",
+		"typings/qbs/qbs.d.ts",
+		"typings/qbs/textfile.d.ts"
+	]
+}

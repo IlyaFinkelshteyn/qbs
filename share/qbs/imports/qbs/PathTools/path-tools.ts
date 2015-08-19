@@ -27,99 +27,112 @@
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ****************************************************************************/
-var FileInfo = require("../FileInfo/fileinfo");
-function applicationFileName(product) {
-    return product.moduleProperty("cpp", "executablePrefix") + product.targetName +
-           product.moduleProperty("cpp", "executableSuffix");
+
+import FileInfo = require("../FileInfo/fileinfo");
+
+export function applicationFileName(product: Product) {
+    return product.moduleProperty<string>("cpp", "executablePrefix")
+        + product.targetName
+        + product.moduleProperty<string>("cpp", "executableSuffix");
 }
-exports.applicationFileName = applicationFileName;
-function applicationFilePath(product) {
-    if (product.moduleProperty("bundle", "isBundle"))
-        return product.moduleProperty("bundle", "executablePath");
+
+export function applicationFilePath(product: Product) {
+    if (product.moduleProperty<boolean>("bundle", "isBundle"))
+        return product.moduleProperty<string>("bundle", "executablePath");
     else
         return applicationFileName(product);
 }
-exports.applicationFilePath = applicationFilePath;
-function loadableModuleFileName(product) {
-    return product.moduleProperty("cpp", "loadableModulePrefix") + product.targetName +
-           product.moduleProperty("cpp", "loadableModuleSuffix");
+
+export function loadableModuleFileName(product: Product) {
+    return product.moduleProperty<string>("cpp", "loadableModulePrefix")
+        + product.targetName
+        + product.moduleProperty<string>("cpp", "loadableModuleSuffix");
 }
-exports.loadableModuleFileName = loadableModuleFileName;
-function loadableModuleFilePath(product) {
-    if (product.moduleProperty("bundle", "isBundle"))
-        return product.moduleProperty("bundle", "executablePath");
+
+export function loadableModuleFilePath(product: Product) {
+    if (product.moduleProperty<boolean>("bundle", "isBundle"))
+        return product.moduleProperty<string>("bundle", "executablePath");
     else
         return loadableModuleFileName(product);
 }
-exports.loadableModuleFilePath = loadableModuleFilePath;
-function staticLibraryFileName(product) {
-    return product.moduleProperty("cpp", "staticLibraryPrefix") + product.targetName +
-           product.moduleProperty("cpp", "staticLibrarySuffix");
+
+export function staticLibraryFileName(product: Product) {
+    return product.moduleProperty<string>("cpp", "staticLibraryPrefix")
+        + product.targetName
+        + product.moduleProperty<string>("cpp", "staticLibrarySuffix");
 }
-exports.staticLibraryFileName = staticLibraryFileName;
-function staticLibraryFilePath(product) {
-    if (product.moduleProperty("bundle", "isBundle"))
-        return product.moduleProperty("bundle", "executablePath");
+
+export function staticLibraryFilePath(product: Product) {
+    if (product.moduleProperty<boolean>("bundle", "isBundle"))
+        return product.moduleProperty<string>("bundle", "executablePath");
     else
         return staticLibraryFileName(product);
 }
-exports.staticLibraryFilePath = staticLibraryFilePath;
-function dynamicLibraryFileName(product, version, maxParts) {
+
+export function dynamicLibraryFileName(product: Product, version?: string, maxParts?: number) {
     // If no override version was given, use the product's version
     // We specifically want to differentiate between undefined and i.e.
     // empty string as empty string should be taken to mean "no version"
     // and undefined should be taken to mean "use the product's version"
     // (which could still end up being "no version")
     if (version === undefined)
-        version = product.moduleProperty("cpp", "internalVersion");
+        version = product.moduleProperty<string>("cpp", "internalVersion");
+
     // If we have a version number, potentially strip off some components
     if (maxParts === 0)
         version = undefined;
     else if (maxParts && version)
         version = version.split('.').slice(0, maxParts).join('.');
+
     // Start with prefix + name (i.e. libqbs, qbs)
-    var fileName = product.moduleProperty("cpp", "dynamicLibraryPrefix") + product.targetName;
+    var fileName = product.moduleProperty<string>("cpp", "dynamicLibraryPrefix") + product.targetName;
+
     // For Darwin platforms, append the version number if there is one (i.e. libqbs.1.0.0)
-    var targetOS = product.moduleProperties("qbs", "targetOS");
+    var targetOS = product.moduleProperties<string>("qbs", "targetOS");
     if (version && targetOS.contains("darwin")) {
         fileName += "." + version;
         version = undefined;
     }
+
     // Append the suffix (i.e. libqbs.1.0.0.dylib, libqbs.so, qbs.dll)
-    fileName += product.moduleProperty("cpp", "dynamicLibrarySuffix");
-    // For non-Darwin Unix platforms, append the version number if there is one (i.e.
-    // libqbs.so.1.0.0)
+    fileName += product.moduleProperty<string>("cpp", "dynamicLibrarySuffix");
+
+    // For non-Darwin Unix platforms, append the version number if there is one (i.e. libqbs.so.1.0.0)
     if (version && targetOS.contains("unix") && !targetOS.contains("darwin"))
         fileName += "." + version;
+
     return fileName;
 }
-exports.dynamicLibraryFileName = dynamicLibraryFileName;
-function dynamicLibraryFilePath(product, version, maxParts) {
+
+export function dynamicLibraryFilePath(product: Product, version: string, maxParts: number) {
     if (product.moduleProperty("bundle", "isBundle"))
-        return product.moduleProperty("bundle", "executablePath");
+        return product.moduleProperty<string>("bundle", "executablePath");
     else
         return dynamicLibraryFileName(product, version, maxParts);
 }
-exports.dynamicLibraryFilePath = dynamicLibraryFilePath;
-function importLibraryFilePath(product) {
-    return product.moduleProperty("cpp", "dynamicLibraryPrefix") + product.targetName +
-           product.moduleProperty("cpp", "dynamicLibraryImportSuffix");
+
+export function importLibraryFilePath(product: Product) {
+    return product.moduleProperty<string>("cpp", "dynamicLibraryPrefix")
+        + product.targetName
+        + product.moduleProperty<string>("cpp", "dynamicLibraryImportSuffix");
 }
-exports.importLibraryFilePath = importLibraryFilePath;
-function debugInfoIsBundle(product) {
-    var flags = product.moduleProperties("cpp", "dsymutilFlags");
+
+export function debugInfoIsBundle(product: Product) {
+    var flags = product.moduleProperties<string>("cpp", "dsymutilFlags");
     return !flags.contains("-f") && !flags.contains("--flat");
 }
-exports.debugInfoIsBundle = debugInfoIsBundle;
-function debugInfoFileName(product) {
+
+export function debugInfoFileName(product: Product) {
     var suffix = "";
+
     // For bundled dSYMs, the suffix appears on the bundle name, not the actual debug info file
-    if (!product.moduleProperties("qbs", "targetOS").contains("darwin") ||
-        !debugInfoIsBundle(product))
-        suffix = product.moduleProperty("cpp", "debugInfoSuffix");
-    if (product.moduleProperty("bundle", "isBundle")) {
+    if (!product.moduleProperties<string>("qbs", "targetOS").contains("darwin")
+        || !debugInfoIsBundle(product))
+        suffix = product.moduleProperty<string>("cpp", "debugInfoSuffix");
+
+    if (product.moduleProperty<boolean>("bundle", "isBundle")) {
         if (!debugInfoIsBundle(product))
-            return product.moduleProperty("bundle", "bundleName") + suffix;
+            return product.moduleProperty<string>("bundle", "bundleName") + suffix;
     } else if (product.type.contains("application"))
         return applicationFileName(product) + suffix;
     else if (product.type.contains("dynamiclibrary"))
@@ -128,39 +141,40 @@ function debugInfoFileName(product) {
         return loadableModuleFileName(product) + suffix;
     else if (product.type.contains("staticlibrary"))
         return staticLibraryFileName(product) + suffix;
+
     return product.targetName + suffix;
 }
-exports.debugInfoFileName = debugInfoFileName;
-function debugInfoBundlePath(product) {
+
+export function debugInfoBundlePath(product: Product) {
     if (!debugInfoIsBundle(product))
         return undefined;
-    var suffix = product.moduleProperty("cpp", "debugInfoSuffix");
-    if (product.moduleProperties("qbs", "targetOS").contains("darwin") &&
-        product.moduleProperty("bundle", "isBundle"))
-        return product.moduleProperty("bundle", "bundleName") + suffix;
+    var suffix = product.moduleProperty<string>("cpp", "debugInfoSuffix");
+    if (product.moduleProperties<string>("qbs", "targetOS").contains("darwin")
+        && product.moduleProperty<boolean>("bundle", "isBundle"))
+        return product.moduleProperty<string>("bundle", "bundleName") + suffix;
     return debugInfoFileName(product) + suffix;
 }
-exports.debugInfoBundlePath = debugInfoBundlePath;
-function debugInfoFilePath(product) {
+
+export function debugInfoFilePath(product: Product) {
     var name = debugInfoFileName(product);
-    if (product.moduleProperties("qbs", "targetOS").contains("darwin") &&
-        debugInfoIsBundle(product)) {
+    if (product.moduleProperties<string>("qbs", "targetOS").contains("darwin") && debugInfoIsBundle(product)) {
         return FileInfo.joinPaths(debugInfoBundlePath(product), "Contents", "Resources", "DWARF",
-                                  name);
+            name);
     }
+
     return name;
 }
-exports.debugInfoFilePath = debugInfoFilePath;
-function debugInfoPlistFilePath(product) {
+
+export function debugInfoPlistFilePath(product: Product) {
     if (!debugInfoIsBundle(product))
         return undefined;
     return FileInfo.joinPaths(debugInfoBundlePath(product), "Contents", "Info.plist");
 }
-exports.debugInfoPlistFilePath = debugInfoPlistFilePath;
+
 // Returns whether the string looks like a library filename
-function isLibraryFileName(product, fileName, prefix, suffixes, isShared) {
-    var suffix, i;
-    var os = product.moduleProperties("qbs", "targetOS");
+export function isLibraryFileName(product: Product, fileName: string, prefix: string, suffixes: string[], isShared: boolean) {
+    var suffix: string, i: number;
+    var os = product.moduleProperties<string>("qbs", "targetOS");
     for (i = 0; i < suffixes.length; ++i) {
         suffix = suffixes[i];
         if (isShared && os.contains("unix") && !os.contains("darwin"))
@@ -170,8 +184,8 @@ function isLibraryFileName(product, fileName, prefix, suffixes, isShared) {
     }
     return false;
 }
-exports.isLibraryFileName = isLibraryFileName;
-function frameworkExecutablePath(frameworkPath) {
+
+export function frameworkExecutablePath(frameworkPath: string) {
     var suffix = ".framework";
     var isAbsoluteFrameworkPath = frameworkPath.slice(-suffix.length) === suffix;
     if (isAbsoluteFrameworkPath) {
@@ -180,11 +194,10 @@ function frameworkExecutablePath(frameworkPath) {
     }
     return undefined;
 }
-exports.frameworkExecutablePath = frameworkExecutablePath;
+
 // pathList is also a string, using the respective separator
-function prependOrSetPath(path, pathList, separator) {
+export function prependOrSetPath(path: string, pathList: string[], separator: string) {
     if (!pathList || pathList.length === 0)
         return path;
     return path + separator + pathList;
 }
-exports.prependOrSetPath = prependOrSetPath;

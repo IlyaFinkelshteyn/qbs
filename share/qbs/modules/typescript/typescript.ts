@@ -27,15 +27,17 @@
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ****************************************************************************/
-var FileInfo = require("../../imports/qbs/FileInfo/fileinfo");
-var ModUtils = require("../../imports/qbs/ModUtils/utils");
-// var Process = loadExtension("qbs.Process");
-function findTscVersion(compilerFilePath, nodejsPath) {
+
+import FileInfo = require("../../imports/qbs/FileInfo/fileinfo");
+import ModUtils = require("../../imports/qbs/ModUtils/utils");
+//var Process = loadExtension("qbs.Process");
+
+function findTscVersion(compilerFilePath: string, nodejsPath: string) {
     var p = new Process();
     try {
         if (nodejsPath)
             p.setEnv("PATH", nodejsPath);
-        p.exec(compilerFilePath, [ "--version" ]);
+        p.exec(compilerFilePath, ["--version"]);
         var re = /^(?:message TS6029: )?Version (([0-9]+(?:\.[0-9]+){1,3})(?:-(.+?))?)$/m;
         var match = p.readStdOut().trim().match(re);
         if (match !== null)
@@ -44,80 +46,97 @@ function findTscVersion(compilerFilePath, nodejsPath) {
         p.close();
     }
 }
-function tscArguments(product, inputs) {
+
+function tscArguments(product: Product, inputs: ArtifactMap) {
     var i;
     var args = [];
-    if (ModUtils.moduleProperty(product, "warningLevel") === "pedantic") {
+
+    if (ModUtils.moduleProperty<string>(product, "warningLevel") === "pedantic") {
         args.push("--noImplicitAny");
     }
+
     var targetVersion = ModUtils.moduleProperty(product, "targetVersion");
     if (targetVersion) {
         args.push("--target");
         args.push(targetVersion);
     }
+
     var moduleLoader = ModUtils.moduleProperty(product, "moduleLoader");
     if (moduleLoader) {
         args.push("--module");
         args.push(moduleLoader);
     }
+
     if (ModUtils.moduleProperty(product, "stripComments")) {
         args.push("--removeComments");
     }
+
     if (ModUtils.moduleProperty(product, "generateDeclarations")) {
         args.push("--declaration");
     }
+
     if (ModUtils.moduleProperty(product, "generateSourceMaps")) {
         args.push("--sourcemap");
     }
+
     // User-supplied flags
     var flags = ModUtils.moduleProperty(product, "compilerFlags");
     for (i in flags) {
         args.push(flags[i]);
     }
+
     if (supportsModernFeatures(product)) {
         args.push("--rootDir", product.sourceDirectory);
     }
+
     args.push("--outDir", product.buildDirectory);
+
     if (ModUtils.moduleProperty(product, "singleFile")) {
         args.push("--out",
-                  FileInfo.joinPaths(product.destinationDirectory, product.targetName) + ".js");
+                FileInfo.joinPaths(product.destinationDirectory, product.targetName) + ".js");
     }
+
     if (inputs.typescript_declaration) {
         for (i = 0; i < inputs.typescript_declaration.length; ++i) {
             args.push(inputs.typescript_declaration[i].filePath);
         }
     }
+
     if (inputs.typescript) {
         for (i = 0; i < inputs.typescript.length; ++i) {
             args.push(inputs.typescript[i].filePath);
         }
     }
+
     if (inputs["typescript.typescript-internal"]) {
         for (i = 0; i < inputs["typescript.typescript-internal"].length; ++i) {
             args.push(inputs["typescript.typescript-internal"][i].filePath);
         }
     }
+
     return args;
 }
+
 function outputArtifacts(product, inputs) {
     if (!supportsModernFeatures(product)) {
         print("WARNING: Qbs does not properly support TypeScript versions prior to 1.5 due to " +
-              "severe limitations in dependency tracking. This is TypeScript version " +
-              ModUtils.moduleProperty(product, "version") + ". It is strongly recommended that " +
-              "you upgrade TypeScript, or continue at your own risk.");
+            "severe limitations in dependency tracking. This is TypeScript version " +
+            ModUtils.moduleProperty(product, "version") + ". It is strongly recommended that " +
+            "you upgrade TypeScript, or continue at your own risk.");
         return legacyOutputArtifacts(product, inputs);
     }
+
     var process;
     try {
         process = new Process();
         process.setEnv("NODE_PATH", ModUtils.moduleProperty(product, "toolchainInstallPath"));
         process.exec(product.moduleProperty("nodejs", "interpreterFilePath"),
-                     [
-                       FileInfo.joinPaths(product.buildDirectory, ".io.qt.qbs.internal.typescript",
-                                          "qbs-tsc-scan.js")
-                     ].concat(tscArguments(product, inputs)),
-                     true);
+                    [FileInfo.joinPaths(product.buildDirectory,
+                                        ".io.qt.qbs.internal.typescript",
+                                        "qbs-tsc-scan.js")]
+                    .concat(tscArguments(product, inputs)), true);
         var artifacts = JSON.parse(process.readStdOut());
+
         // Find and tag the "main" output file
         var applicationFile = product.moduleProperty("nodejs", "applicationFile");
         if (applicationFile) {
@@ -134,81 +153,100 @@ function outputArtifacts(product, inputs) {
                 if (!expected.endsWith(".ts"))
                     // tsc doesn't allow this anyways, so it's a perfectly reasonable restriction
                     throw "TypeScript source file name '" + applicationFile +
-                        "' does not end with .ts";
+                            "' does not end with .ts";
+
                 expected = expected.slice(0, -2) + "js";
+
                 for (i = 0; i < artifacts.length; ++i) {
-                    if (expected ===
-                        FileInfo.relativePath(product.buildDirectory, artifacts[i].filePath)) {
+                    if (expected === FileInfo.relativePath(product.buildDirectory,
+                                                        artifacts[i].filePath)) {
                         appIndex = i;
                         break;
                     }
                 }
             }
+
             if (appIndex === -1 || !artifacts[appIndex].fileTags.contains("compiled_typescript"))
                 throw "nodejs.applicationFile was set, but Qbs couldn't find the compiled " +
-                    "JavaScript file corresponding to '" + applicationFile + "'";
-            artifacts[appIndex].fileTags =
-                artifacts[appIndex].fileTags.concat([ "application_js" ]);
+                        "JavaScript file corresponding to '" + applicationFile + "'";
+
+            artifacts[appIndex].fileTags = artifacts[appIndex].fileTags.concat(["application_js"]);
         }
+
         return artifacts;
     } finally {
         if (process)
             process.close();
     }
 }
+
 function legacyOutputArtifacts(product, inputs) {
     var artifacts = [];
+
     if (!inputs.typescript) {
         return artifacts;
     }
-    var jsTags = [ "js", "compiled_typescript" ];
+
+    var jsTags = ["js", "compiled_typescript"];
     var filePath = FileInfo.joinPaths(product.destinationDirectory, product.targetName);
     if (product.moduleProperty("typescript", "singleFile")) {
         // We could check
-        // if (product.moduleProperty("nodejs", "applicationFile") ===
-        // inputs.typescript[i].filePath)
+        // if (product.moduleProperty("nodejs", "applicationFile") === inputs.typescript[i].filePath)
         // but since we're compiling to a single file there's no need to state it explicitly
         jsTags.push("application_js");
-        artifacts.push({
-            fileTags : jsTags,
-            filePath :
-                FileInfo.joinPaths(product.moduleProperty("nodejs", "compiledIntermediateDir"),
-                                   product.targetName + ".js")
-        });
+
+        artifacts.push({fileTags: jsTags,
+                        filePath: FileInfo.joinPaths(
+                                    product.moduleProperty("nodejs",
+                                                            "compiledIntermediateDir"),
+                                    product.targetName + ".js")});
+
         if (product.moduleProperty("typescript", "generateDeclarations")) {
-            artifacts.push(
-                {fileTags : [ "typescript_declaration" ], filePath : filePath + ".d.ts"});
+            artifacts.push({fileTags: ["typescript_declaration"],
+                            filePath: filePath + ".d.ts"});
         }
+
         if (product.moduleProperty("typescript", "generateSourceMaps")) {
-            artifacts.push({fileTags : [ "source_map" ], filePath : filePath + ".js.map"});
+            artifacts.push({fileTags: ["source_map"],
+                            filePath: filePath + ".js.map"});
         }
     } else {
         for (var i = 0; i < inputs.typescript.length; ++i) {
-            jsTags = [ "js", "compiled_typescript" ];
-            if (product.moduleProperty("nodejs", "applicationFile") ===
-                inputs.typescript[i].filePath)
+            jsTags = ["js", "compiled_typescript"];
+            if (product.moduleProperty("nodejs", "applicationFile") === inputs.typescript[i].filePath)
                 jsTags.push("application_js");
-            var intermediatePath = FileInfo.path(
-                FileInfo.relativePath(product.sourceDirectory, inputs.typescript[i].filePath));
+
+            var intermediatePath = FileInfo.path(FileInfo.relativePath(
+                                                    product.sourceDirectory,
+                                                    inputs.typescript[i].filePath));
+
             var baseName = FileInfo.baseName(inputs.typescript[i].fileName);
-            filePath = FileInfo.joinPaths(product.destinationDirectory, intermediatePath, baseName);
-            artifacts.push({
-                fileTags : jsTags,
-                filePath :
-                    FileInfo.joinPaths(product.moduleProperty("nodejs", "compiledIntermediateDir"),
-                                       intermediatePath, baseName + ".js")
-            });
+            filePath = FileInfo.joinPaths(product.destinationDirectory,
+                                        intermediatePath,
+                                        baseName);
+
+            artifacts.push({fileTags: jsTags,
+                            filePath: FileInfo.joinPaths(
+                                        product.moduleProperty("nodejs",
+                                                                "compiledIntermediateDir"),
+                                        intermediatePath,
+                                        baseName + ".js")});
+
             if (product.moduleProperty("typescript", "generateDeclarations")) {
-                artifacts.push(
-                    {fileTags : [ "typescript_declaration" ], filePath : filePath + ".d.ts"});
+                artifacts.push({fileTags: ["typescript_declaration"],
+                                filePath: filePath + ".d.ts"});
             }
+
             if (product.moduleProperty("typescript", "generateSourceMaps")) {
-                artifacts.push({fileTags : [ "source_map" ], filePath : filePath + ".js.map"});
+                artifacts.push({fileTags: ["source_map"],
+                                filePath: filePath + ".js.map"});
             }
         }
     }
+
     return artifacts;
 }
+
 function supportsModernFeatures(product) {
     var compilerVersionMajor = ModUtils.moduleProperty(product, "versionMajor");
     if (compilerVersionMajor === 1) {
@@ -216,5 +254,6 @@ function supportsModernFeatures(product) {
             return true;
         }
     }
+
     return compilerVersionMajor > 1;
 }

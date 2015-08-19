@@ -28,36 +28,41 @@
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ****************************************************************************/
-var FileInfo = require("../../imports/qbs/FileInfo/fileinfo");
-function prepareCompiler(product, inputs, output) {
+
+import FileInfo = require("../../imports/qbs/FileInfo/fileinfo");
+
+function prepareCompiler(product: Product, inputs: ArtifactMap, output: Artifact) {
     var i;
-    var args = [ "/nologo" ];
-    var platformDefines = product.moduleProperties("cli", "platformDefines");
-    var compilerDefines = product.moduleProperties("cli", "compilerDefines");
-    var defines = product.moduleProperties("cli", "defines");
-    var platformCompilerFlags = product.moduleProperties("cli", "platformCompilerFlags");
-    var compilerFlags = product.moduleProperties("cli", "compilerFlags");
-    var libraryPaths = product.moduleProperties("cli", "libraryPaths");
-    var dynamicLibraries = product.moduleProperties("cli", "dynamicLibraries");
-    var netmodules = product.moduleProperties("cli", "netmodules");
-    var warnAsError = product.moduleProperty("cli", "treatWarningsAsErrors");
-    var warningLevel = product.moduleProperty("cli", "warningLevel");
-    var debugInformation = product.moduleProperty("cli", "debugInformation");
-    var optimization = product.moduleProperty("cli", "optimization");
-    var architecture = product.moduleProperty("cli", "architecture");
-    var csharpCompilerPath = product.moduleProperty("cli", "csharpCompilerPath");
-    var vbCompilerPath = product.moduleProperty("cli", "vbCompilerPath");
-    var fsharpCompilerPath = product.moduleProperty("cli", "fsharpCompilerPath");
-    var compilers = {
-        "cli.csharp" : csharpCompilerPath,
-        "cli.vb" : vbCompilerPath,
-        "cli.fsharp" : fsharpCompilerPath
+    var args = ["/nologo"];
+
+    var platformDefines = product.moduleProperties<string>("cli", "platformDefines");
+    var compilerDefines = product.moduleProperties<string>("cli", "compilerDefines");
+    var defines = product.moduleProperties<string>("cli", "defines");
+    var platformCompilerFlags = product.moduleProperties<string>("cli", "platformCompilerFlags");
+    var compilerFlags = product.moduleProperties<string>("cli", "compilerFlags")
+    var libraryPaths = product.moduleProperties<string>("cli", "libraryPaths");
+    var dynamicLibraries = product.moduleProperties<string>("cli", "dynamicLibraries");
+    var netmodules = product.moduleProperties<string>("cli", "netmodules");
+    var warnAsError = product.moduleProperty<boolean>("cli", "treatWarningsAsErrors");
+    var warningLevel = product.moduleProperty<string>("cli", "warningLevel");
+    var debugInformation = product.moduleProperty<boolean>("cli", "debugInformation");
+    var optimization = product.moduleProperty<string>("cli", "optimization");
+    var architecture = product.moduleProperty<string>("cli", "architecture");
+
+    var csharpCompilerPath = product.moduleProperty<string>("cli", "csharpCompilerPath");
+    var vbCompilerPath = product.moduleProperty<string>("cli", "vbCompilerPath");
+    var fsharpCompilerPath = product.moduleProperty<string>("cli", "fsharpCompilerPath");
+
+    var compilers: { [tag: string]: string } = {
+        "cli.csharp": csharpCompilerPath,
+        "cli.vb": vbCompilerPath,
+        "cli.fsharp": fsharpCompilerPath
     };
-    var pathFunction = product.moduleProperties("qbs", "hostOS").contains("windows")
-                           ? FileInfo.toWindowsSeparators
-                           : function(path) {
-                                 return path;
-                             };
+
+    var pathFunction = product.moduleProperties<string>("qbs", "hostOS").contains("windows")
+        ? FileInfo.toWindowsSeparators
+        : function(path: string) { return path; };
+
     var outputDescription = "assembly";
     if (output.fileTags.contains("application")) {
         args.push("/target:" + (product.consoleApplication === false ? "winexe" : "exe"));
@@ -67,26 +72,28 @@ function prepareCompiler(product, inputs, output) {
         args.push("/target:module");
         outputDescription = "netmodule";
     }
+
     // Make sure our input files are all the same language
     var keys = Object.keys(inputs);
-    var language;
+    var language: string;
     for (i in keys) {
         if (Object.keys(compilers).contains(keys[i])) {
             if (language)
-                throw(
-                    "You cannot compile source files in more than one CLI language into a single " +
-                    outputDescription + ".");
+                throw ("You cannot compile source files in more than one CLI language into a single " + outputDescription + ".");
             language = keys[i];
         }
     }
+
     if (!compilers[language]) {
-        throw("No CLI compiler available to compile " + language + " files.");
+        throw ("No CLI compiler available to compile " + language + " files.");
     }
+
     // docs state "/platform is not available in the development environment in Visual C# Express"
     // does this mean from the IDE or the compiler itself shipped with Express does not support it?
     if (architecture !== undefined) {
-        if (architecture === "x86" || architecture === "anycpu" ||
-            architecture === "anycpu32bitpreferred")
+        if (architecture === "x86" ||
+            architecture === "anycpu" ||
+            architecture === "anycpu32bitpreferred") // requires .NET 4.5
             ;
         else if (architecture === "x86_64")
             architecture = "x64";
@@ -95,15 +102,20 @@ function prepareCompiler(product, inputs, output) {
         else if (architecture === "arm")
             architecture = "ARM";
         else
-            throw("Invalid CLI architecture: " + architecture);
+            throw ("Invalid CLI architecture: " + architecture);
+
         args.push("/platform:" + architecture);
     }
+
     if (debugInformation !== undefined)
         args.push("/debug" + (debugInformation ? "+" : "-"));
+
     if (optimization !== undefined)
         args.push("/optimize" + (optimization !== "none" ? "+" : "-"));
+
     if (warnAsError !== undefined)
         args.push("/warnaserror" + (warnAsError ? "+" : "-"));
+
     if (warningLevel !== undefined) {
         if (language === "cli.vb") {
             if (warningLevel === "none" || warningLevel === 0)
@@ -118,46 +130,53 @@ function prepareCompiler(product, inputs, output) {
             args.push("/warn:" + warningLevel);
         }
     }
+
     // Preprocessor defines
     var allDefines = (platformDefines || []).concat(compilerDefines || []).concat(defines || []);
     if (allDefines.length > 0)
         args.push("/define:" + allDefines.join(";"));
+
     // Library search paths
     for (i in libraryPaths)
         args.push("/lib:" + libraryPaths.join(","));
+
     // Dependent libraries
     for (i in dynamicLibraries) {
-        args.push("/reference:" + dynamicLibraries[i] +
-                  product.moduleProperty("cli", "dynamicLibrarySuffix"));
+        args.push("/reference:"
+            + dynamicLibraries[i]
+            + product.moduleProperty("cli", "dynamicLibrarySuffix"));
     }
+
     for (i in inputs.dynamiclibrary)
         args.push("/reference:" + inputs.dynamiclibrary[i].filePath);
+
     // Dependent netmodules
     for (i in netmodules) {
-        args.push("/addmodule:" +
-                  netmodules.map(function(f) {
-                                return f + product.moduleProperty("cli", "netmoduleSuffix");
-                            })
-                      .join(";"));
+        args.push("/addmodule:" + netmodules.map(function(f) {
+            return f + product.moduleProperty("cli", "netmoduleSuffix");
+        }).join(";"));
     }
+
     if (inputs["cli.netmodule"]) {
-        args.push("/addmodule:" +
-                  inputs["cli.netmodule"]
-                      .map(function(f) {
-                          return f.filePath;
-                      })
-                      .join(";"));
+        args.push("/addmodule:" + inputs["cli.netmodule"].map(function(f) {
+            return f.filePath;
+        }).join(";"));
     }
+
     // Dependent resources
     for (i in inputs["cli.resources"])
         args.push("/resource:" + pathFunction(inputs["cli.resources"][i].filePath));
+
     // Additional compiler flags
     var allFlags = (platformCompilerFlags || []).concat(compilerFlags || []);
     if (allFlags.length > 0)
         args.push(allFlags[i]);
+
     args.push("/out:" + pathFunction(output.filePath));
+
     for (i in inputs[keys[0]])
         args.push(pathFunction(inputs[keys[0]][i].filePath));
+
     var cmd = new Command(compilers[language], args);
     cmd.description = "linking " + output.fileName;
     cmd.highlight = "linker";

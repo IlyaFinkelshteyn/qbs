@@ -1,0 +1,17 @@
+export declare function applicationFileName(product: Product): string;
+export declare function applicationFilePath(product: Product): string;
+export declare function loadableModuleFileName(product: Product): string;
+export declare function loadableModuleFilePath(product: Product): string;
+export declare function staticLibraryFileName(product: Product): string;
+export declare function staticLibraryFilePath(product: Product): string;
+export declare function dynamicLibraryFileName(product: Product, version?: string, maxParts?: number): string;
+export declare function dynamicLibraryFilePath(product: Product, version: string, maxParts: number): string;
+export declare function importLibraryFilePath(product: Product): string;
+export declare function debugInfoIsBundle(product: Product): boolean;
+export declare function debugInfoFileName(product: Product): string;
+export declare function debugInfoBundlePath(product: Product): string;
+export declare function debugInfoFilePath(product: Product): string;
+export declare function debugInfoPlistFilePath(product: Product): string;
+export declare function isLibraryFileName(product: Product, fileName: string, prefix: string, suffixes: string[], isShared: boolean): boolean;
+export declare function frameworkExecutablePath(frameworkPath: string): string;
+export declare function prependOrSetPath(path: string, pathList: string[], separator: string): string;

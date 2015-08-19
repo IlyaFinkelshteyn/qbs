@@ -1,0 +1,11 @@
+export declare function path(fp: string): string;
+export declare function fileName(fph: string): string;
+export declare function baseName(fph: string): string;
+export declare function completeBaseName(fph: string): string;
+export declare function relativePath(base: string, rel: string): string;
+export declare function isAbsolutePath(path: string): boolean;
+export declare function toWindowsSeparators(str: string): string;
+export declare function fromWindowsSeparators(str: string): string;
+export declare function toNativeSeparators(str: string, os: string[]): string;
+export declare function fromNativeSeparators(str: string, os: string[]): string;
+export declare function joinPaths(...paths: string[]): string;

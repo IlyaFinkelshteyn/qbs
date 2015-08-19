@@ -27,36 +27,7 @@
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ****************************************************************************/
-function characterSetDefines(charset) {
-    var defines = [];
-    if (charset === "unicode")
-        defines.push("UNICODE", "_UNICODE");
-    else if (charset === "mbcs")
-        defines.push("_MBCS");
-    return defines;
-}
-exports.characterSetDefines = characterSetDefines;
-function isValidWindowsVersion(systemVersion) {
-    // Add new Windows versions to this list when they are released
-    var realVersions = [ '6.3', '6.2', '6.1', '6.0', '5.2', '5.1', '5.0', '4.0' ];
-    for (var i in realVersions)
-        if (systemVersion === realVersions[i])
-            return true;
-    return false;
-}
-exports.isValidWindowsVersion = isValidWindowsVersion;
-function getWindowsVersionInFormat(systemVersion, format) {
-    if (!isValidWindowsVersion(systemVersion))
-        return undefined;
-    var major = parseInt(systemVersion.split('.')[0]);
-    var minor = parseInt(systemVersion.split('.')[1]);
-    if (format === 'hex') {
-        return '0x' + major + (minor < 10 ? '0' : '') + minor;
-    } else if (format === 'subsystem') {
-        // http://msdn.microsoft.com/en-us/library/fcc1zstk.aspx
-        return major + '.' + (minor < 10 ? '0' : '') + minor;
-    } else {
-        throw("Unrecognized Windows version format " + format + ". Must be in {hex, subsystem}.");
-    }
-}
-exports.getWindowsVersionInFormat = getWindowsVersionInFormat;
+export declare function abiNameToDirName(abiName: string): string;
+export declare function androidAbi(arch: string): string;
+export declare function commonCompilerFlags(buildVariant: string, abi: string, hardFloat: boolean, armMode: string): string[];
+export declare function commonLinkerFlags(abi: string, hardFloat: boolean): string[];

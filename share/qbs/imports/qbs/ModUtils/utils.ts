@@ -27,7 +27,9 @@
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ****************************************************************************/
-var FileInfo = require("../FileInfo/fileinfo");
+
+import FileInfo = require("../FileInfo/fileinfo");
+
 /**
     * Given a list of file tags, returns the file tag (one of [c, cpp, objc, objcpp])
     * corresponding to the C-family language the file should be compiled as.
@@ -35,26 +37,30 @@ var FileInfo = require("../FileInfo/fileinfo");
     * If no such tag is found, undefined is returned. If more than one match is
     * found, an exception is thrown.
     */
-function fileTagForTargetLanguage(fileTags) {
-    var srcTags = [ "c", "cpp", "objc", "objcpp", "asm", "asm_cpp" ];
-    var pchTags = [ "c_pch", "cpp_pch", "objc_pch", "objcpp_pch" ];
+export function fileTagForTargetLanguage(fileTags: string[]) {
+    var srcTags = ["c", "cpp", "objc", "objcpp", "asm", "asm_cpp"];
+    var pchTags = ["c_pch", "cpp_pch", "objc_pch", "objcpp_pch"];
+
     var canonicalTag = undefined;
     var foundTagCount = 0;
     for (var i = 0; i < fileTags.length; ++i) {
         var idx = srcTags.indexOf(fileTags[i]);
         if (idx === -1)
             idx = pchTags.indexOf(fileTags[i]);
+
         if (idx !== -1) {
             canonicalTag = srcTags[idx];
             if (++foundTagCount > 1)
                 break;
         }
     }
+
     if (foundTagCount > 1)
-        throw("source files cannot be identified as more than one language");
+        throw ("source files cannot be identified as more than one language");
+
     return foundTagCount == 1 ? canonicalTag : undefined;
 }
-exports.fileTagForTargetLanguage = fileTagForTargetLanguage;
+
 /**
     * Returns the name of a language-specific property given the file tag
     * for that property, and the base property name.
@@ -64,60 +70,60 @@ exports.fileTagForTargetLanguage = fileTagForTargetLanguage;
     * @param propertyName flags, platformFlags, precompiledHeader
     * @param fileTag c, cpp, objc, objcpp
     */
-function languagePropertyName(propertyName, fileTag) {
+export function languagePropertyName(propertyName: string, fileTag: string) {
     if (!fileTag)
         fileTag = "common";
-    var map = {
-        "c" : {
-            "flags" : "cFlags",
-            "platformFlags" : "platformCFlags",
-            "precompiledHeader" : "cPrecompiledHeader"
+
+    var map: { [key: string]: { [key: string]: string } } = {
+        "c": {
+            "flags": "cFlags",
+            "platformFlags": "platformCFlags",
+            "precompiledHeader": "cPrecompiledHeader"
         },
-        "cpp" : {
-            "flags" : "cxxFlags",
-            "platformFlags" : "platformCxxFlags",
-            "precompiledHeader" : "cxxPrecompiledHeader"
+        "cpp": {
+            "flags": "cxxFlags",
+            "platformFlags": "platformCxxFlags",
+            "precompiledHeader": "cxxPrecompiledHeader"
         },
-        "objc" : {
-            "flags" : "objcFlags",
-            "platformFlags" : "platformObjcFlags",
-            "precompiledHeader" : "objcPrecompiledHeader"
+        "objc": {
+            "flags": "objcFlags",
+            "platformFlags": "platformObjcFlags",
+            "precompiledHeader": "objcPrecompiledHeader"
         },
-        "objcpp" : {
-            "flags" : "objcxxFlags",
-            "platformFlags" : "platformObjcxxFlags",
-            "precompiledHeader" : "objcxxPrecompiledHeader"
+        "objcpp": {
+            "flags": "objcxxFlags",
+            "platformFlags": "platformObjcxxFlags",
+            "precompiledHeader": "objcxxPrecompiledHeader"
         },
-        "common" : {
-            "flags" : "commonCompilerFlags",
-            "platformFlags" : "platformCommonCompilerFlags",
-            "precompiledHeader" : "precompiledHeader"
+        "common": {
+            "flags": "commonCompilerFlags",
+            "platformFlags": "platformCommonCompilerFlags",
+            "precompiledHeader": "precompiledHeader"
         }
     };
+
     var lang = map[fileTag];
     if (!lang)
         return propertyName;
+
     return lang[propertyName] || propertyName;
 }
-exports.languagePropertyName = languagePropertyName;
-function moduleProperties(config, key, langFilter) {
-    return config.moduleProperties(config.moduleName, languagePropertyName(key, langFilter));
+
+export function moduleProperties<T>(config: Module, key: string, langFilter?: string) {
+    return config.moduleProperties<T>(config.moduleName, languagePropertyName(key, langFilter))
 }
-exports.moduleProperties = moduleProperties;
-function modulePropertiesFromArtifacts(product, artifacts, moduleName, propertyName, langFilter) {
-    var result =
-        product.moduleProperties(moduleName, languagePropertyName(propertyName, langFilter));
+
+export function modulePropertiesFromArtifacts<T>(product: Module, artifacts: Artifact[], moduleName: string, propertyName: string, langFilter?: string) {
+    var result = product.moduleProperties<T>(moduleName, languagePropertyName(propertyName, langFilter))
     for (var i in artifacts)
-        result = result.concat(artifacts[i].moduleProperties(
-            moduleName, languagePropertyName(propertyName, langFilter)));
-    return result;
+        result = result.concat(artifacts[i].moduleProperties<T>(moduleName, languagePropertyName(propertyName, langFilter)))
+    return result
 }
-exports.modulePropertiesFromArtifacts = modulePropertiesFromArtifacts;
-function moduleProperty(product, propertyName, langFilter) {
-    return product.moduleProperty(product.moduleName,
-                                  languagePropertyName(propertyName, langFilter));
+
+export function moduleProperty<T>(product: Module, propertyName: string, langFilter?: string) {
+    return product.moduleProperty<T>(product.moduleName, languagePropertyName(propertyName, langFilter))
 }
-exports.moduleProperty = moduleProperty;
+
 /**
     * Returns roughly the same value as moduleProperty for a product, but ensures that all of the
     * given input artifacts share the same value of said property, as a sort of sanity check.
@@ -126,59 +132,57 @@ exports.moduleProperty = moduleProperty;
     * artifacts for which the value is input specific (not product specific), but which must be the
     * same for all inputs.
     */
-function modulePropertyFromArtifacts(product, artifacts, moduleName, propertyName, langFilter) {
-    var values =
-        [ product.moduleProperty(moduleName, languagePropertyName(propertyName, langFilter)) ];
+export function modulePropertyFromArtifacts<T>(product: Module, artifacts: Artifact[], moduleName: string, propertyName: string, langFilter?: string) {
+    var values = [product.moduleProperty<T>(moduleName, languagePropertyName(propertyName, langFilter))];
     for (var i in artifacts) {
-        var value =
-            artifacts[i].moduleProperty(moduleName, languagePropertyName(propertyName, langFilter));
+        var value = artifacts[i].moduleProperty<T>(moduleName, languagePropertyName(propertyName, langFilter));
         if (!values.contains(value)) {
             values.push(value);
         }
     }
+
     if (values.length !== 1) {
-        throw "The value of " + [moduleName, propertyName].join(".") +
-            " must be identical for the following input artifacts: " +
-            artifacts.map(function(artifact) {
-                return artifact.filePath;
-            });
+        throw "The value of " + [moduleName, propertyName].join(".")
+        + " must be identical for the following input artifacts: "
+        + artifacts.map(function(artifact) { return artifact.filePath; });
     }
+
     return values[0];
 }
-exports.modulePropertyFromArtifacts = modulePropertyFromArtifacts;
-function dumpProperty(key, value, level) {
+
+export function dumpProperty(key: string, value: any, level: number) {
     var indent = "";
     for (var k = 0; k < level; ++k)
         indent += "  ";
     print(indent + key + ": " + value);
 }
-exports.dumpProperty = dumpProperty;
-function traverseObject(obj, func, level) {
+
+export function traverseObject(obj: any, func: (key: string, value: any, level: number) => void, level: number) {
     if (!level)
         level = 0;
-    var i, children = {};
+    var i: any, children: any = {};
     for (i in obj) {
-        if (typeof(obj[i]) === "object" && !(obj[i] instanceof Array))
+        if (typeof (obj[i]) === "object" && !(obj[i] instanceof Array))
             children[i] = obj[i];
         else
-            func.apply(this, [ i, obj[i], level ]);
+            func.apply(this, [i, obj[i], level]);
     }
     level++;
     for (i in children) {
-        func.apply(this, [ i, children[i], level - 1 ]);
+        func.apply(this, [i, children[i], level - 1]);
         traverseObject(children[i], func, level);
     }
     level--;
 }
-exports.traverseObject = traverseObject;
-function dumpObject(obj, description) {
+
+export function dumpObject(obj: any, description: string) {
     if (!description)
         description = "object dump";
     print("+++++++++ " + description + " +++++++++");
     traverseObject(obj, dumpProperty);
 }
-exports.dumpObject = dumpObject;
-function concatAll() {
+
+export function concatAll() {
     var result = [];
     for (var i = 0; i < arguments.length; ++i) {
         var arg = arguments[i];
@@ -191,27 +195,27 @@ function concatAll() {
     }
     return result;
 }
-exports.concatAll = concatAll;
-function allFileTags(fileTaggers) {
+
+export function allFileTags(fileTaggers) {
     var tags = [];
     for (var ext in fileTaggers)
         tags = tags.uniqueConcat(fileTaggers[ext]);
     return tags;
 }
-exports.allFileTags = allFileTags;
+
 /**
     * Flattens an environment dictionary (string keys to arrays or strings)
     * into a string list containing items like \c key=value1:value2:value3
     */
-function flattenEnvironmentDictionary(dict, pathListSeparator) {
+export function flattenEnvironmentDictionary(dict, pathListSeparator: string) {
     var list = [];
     for (var i in dict)
         list.push(i + "=" + dict[i]);
     return list;
 }
-exports.flattenEnvironmentDictionary = flattenEnvironmentDictionary;
+
 var EnvironmentVariable = (function() {
-    function EnvironmentVariable(name, separator, convertPathSeparators) {
+    function EnvironmentVariable(name: string, separator: string, convertPathSeparators: boolean) {
         if (!name)
             throw "EnvironmentVariable c'tor needs a name as first argument.";
         this.name = name;
@@ -226,6 +230,7 @@ var EnvironmentVariable = (function() {
             v = FileInfo.toWindowsSeparators(v);
         this.value = v + this.value;
     };
+
     EnvironmentVariable.prototype.append = function(v) {
         if (this.value.length > 0)
             this.value += this.separator;
@@ -233,33 +238,37 @@ var EnvironmentVariable = (function() {
             v = FileInfo.toWindowsSeparators(v);
         this.value += v;
     };
+
     EnvironmentVariable.prototype.set = function() {
         putEnv(this.name, this.value);
     };
+
     EnvironmentVariable.prototype.unset = function() {
         unsetEnv(this.name);
     };
+
     return EnvironmentVariable;
 })();
+
 var PropertyValidator = (function() {
-    function PropertyValidator(moduleName) {
+    function PropertyValidator(moduleName: string) {
         this.requiredProperties = {};
         this.propertyValidators = [];
         if (!moduleName)
             throw "PropertyValidator c'tor needs a module name as a first argument.";
         this.moduleName = moduleName;
     }
-    PropertyValidator.prototype.setRequiredProperty = function(propertyName, propertyValue,
-                                                               message) {
-        this.requiredProperties[propertyName] = {propertyValue : propertyValue, message : message};
+    PropertyValidator.prototype.setRequiredProperty = function(propertyName, propertyValue, message) {
+        this.requiredProperties[propertyName] = { propertyValue: propertyValue, message: message };
     };
-    PropertyValidator.prototype.addRangeValidator = function(propertyName, propertyValue, min, max,
-                                                             allowFloats) {
+
+    PropertyValidator.prototype.addRangeValidator = function(propertyName, propertyValue, min, max, allowFloats) {
         var message = [];
         if (min !== undefined)
             message.push(">= " + min);
         if (max !== undefined)
             message.push("<= " + max);
+
         this.addCustomValidator(propertyName, propertyValue, function(value) {
             if (typeof value !== "number")
                 return false;
@@ -272,40 +281,33 @@ var PropertyValidator = (function() {
             return true;
         }, "must be " + (!allowFloats ? "an integer " : "") + message.join(" and "));
     };
-    PropertyValidator.prototype.addVersionValidator = function(
-        propertyName, propertyValue, minComponents, maxComponents, allowSuffixes) {
-        if (minComponents !== undefined &&
-            (typeof minComponents !== "number" || minComponents % 1 !== 0 || minComponents < 1))
+
+    PropertyValidator.prototype.addVersionValidator = function(propertyName, propertyValue, minComponents, maxComponents, allowSuffixes) {
+        if (minComponents !== undefined && (typeof minComponents !== "number" || minComponents % 1 !== 0 || minComponents < 1))
             throw "minComponents must be at least 1";
-        if (maxComponents !== undefined &&
-            (typeof maxComponents !== "number" || maxComponents % 1 !== 0 ||
-             maxComponents < minComponents))
+        if (maxComponents !== undefined && (typeof maxComponents !== "number" || maxComponents % 1 !== 0 || maxComponents < minComponents))
             throw "maxComponents must be >= minComponents";
-        this.addCustomValidator(propertyName, propertyValue,
-                                function(value) {
-                                    if (typeof value !== "string")
-                                        return false;
-                                    return value &&
-                                           value.match("^[0-9]+(\\.[0-9]+){" +
-                                                       ((minComponents - 1) || 0) + "," +
-                                                       ((maxComponents - 1) || "") + "}" +
-                                                       (!allowSuffixes ? "$" : "")) !== null;
-                                },
-                                "must be a version number with " + minComponents + " to " +
-                                    maxComponents + " components");
+
+        this.addCustomValidator(propertyName, propertyValue, function(value) {
+            if (typeof value !== "string")
+                return false;
+            return value && value.match("^[0-9]+(\\.[0-9]+){" + ((minComponents - 1) || 0) + "," + ((maxComponents - 1) || "") + "}" + (!allowSuffixes ? "$" : "")) !== null;
+        }, "must be a version number with " + minComponents + " to " + maxComponents + " components");
     };
-    PropertyValidator.prototype.addCustomValidator = function(propertyName, propertyValue,
-                                                              validator, message) {
+
+    PropertyValidator.prototype.addCustomValidator = function(propertyName, propertyValue, validator, message) {
         this.propertyValidators.push({
-            propertyName : propertyName,
-            propertyValue : propertyValue,
-            validator : validator,
-            message : message
+            propertyName: propertyName,
+            propertyValue: propertyValue,
+            validator: validator,
+            message: message
         });
     };
+
     PropertyValidator.prototype.validate = function(throwOnError) {
         var i;
         var lines;
+
         // Find any missing properties
         var missingProperties = {};
         for (i in this.requiredProperties) {
@@ -314,6 +316,7 @@ var PropertyValidator = (function() {
                 missingProperties[i] = this.requiredProperties[i];
             }
         }
+
         // Find any properties that don't satisfy their validator function
         var invalidProperties = {};
         for (var j = 0; j < this.propertyValidators.length; ++j) {
@@ -324,18 +327,18 @@ var PropertyValidator = (function() {
                 invalidProperties[v.propertyName] = messages;
             }
         }
+
         var errorMessage = "";
         if (Object.keys(missingProperties).length > 0) {
-            errorMessage +=
-                "The following properties are not set. Set them in your profile or product:\n";
+            errorMessage += "The following properties are not set. Set them in your profile or product:\n";
             lines = [];
             for (i in missingProperties) {
                 var obj = missingProperties[i];
-                lines.push(this.moduleName + "." + i +
-                           ((obj && obj.message) ? (": " + obj.message) : ""));
+                lines.push(this.moduleName + "." + i + ((obj && obj.message) ? (": " + obj.message) : ""));
             }
             errorMessage += lines.join("\n");
         }
+
         if (Object.keys(invalidProperties).length > 0) {
             if (errorMessage)
                 errorMessage += "\n";
@@ -348,17 +351,25 @@ var PropertyValidator = (function() {
             }
             errorMessage += lines.join("\n");
         }
+
         if (throwOnError !== false && errorMessage.length > 0)
             throw errorMessage;
+
         return errorMessage.length == 0;
     };
     return PropertyValidator;
 })();
-var BlackboxOutputArtifactTracker = (function() {
-    function BlackboxOutputArtifactTracker() {
-        this.allowUntaggedFiles = false;
-    }
-    BlackboxOutputArtifactTracker.prototype.artifacts = function(outputDirectory) {
+
+export class BlackboxOutputArtifactTracker {
+    public command: string;
+    public commandArgsFunction: (outputDirectory: string) => string[];
+    public commandEnvironmentFunction: (outputDirectory: string) => string[];
+    public processStdOutFunction: (stdout: string) => Artifact[];
+    public fileTaggers: { [key: string]: string[] };
+    public allowUntaggedFiles: boolean = false;
+    public hostOS: string[];
+    
+    public artifacts(outputDirectory: string) {
         var process;
         var fakeOutputDirectory;
         try {
@@ -380,49 +391,55 @@ var BlackboxOutputArtifactTracker = (function() {
             }
             if (this.processStdOutFunction)
                 artifacts = artifacts.concat(this.processStdOutFunction(process.readStdOut()));
-            artifacts =
-                this.fixArtifactPaths(artifacts, outputDirectory, fakeOutputDirectory.path());
+            artifacts = this.fixArtifactPaths(artifacts, outputDirectory, fakeOutputDirectory.path());
             return artifacts;
-        } finally {
+        }
+        finally {
             if (process)
                 process.close();
             if (fakeOutputDirectory)
                 fakeOutputDirectory.remove();
         }
-    };
-    BlackboxOutputArtifactTracker.prototype.createArtifact = function(filePath) {
+    }
+    
+    public createArtifact(filePath: string) {
         for (var ext in this.fileTaggers) {
             if (filePath.endsWith(ext)) {
-                return {filePath : filePath, fileTags : this.fileTaggers[ext]};
+                return {
+                    filePath: filePath,
+                    fileTags: this.fileTaggers[ext]
+                };
             }
         }
         if (!this.allowUntaggedFiles)
             throw "could not tag file " + filePath;
-        return {filePath : filePath, fileTags : []};
-    };
+        return {
+            filePath: filePath,
+            fileTags: []
+        };
+    }
+    
     // TODO: Use File.directoryEntries
-    BlackboxOutputArtifactTracker.prototype.findFiles = function(dir) {
+    public findFiles(dir: string) {
         var proc;
         try {
             proc = new Process();
             if (this.hostOS && this.hostOS.contains("windows"))
-                proc.exec("cmd", [ "/C", "dir", FileInfo.toWindowsSeparators(dir), "/B", "/S" ],
-                          true);
+                proc.exec("cmd", ["/C", "dir", FileInfo.toWindowsSeparators(dir), "/B", "/S"], true);
             else
-                proc.exec("find", [ dir, "-type", "f" ], true);
+                proc.exec("find", [dir, "-type", "f"], true);
             return proc.readStdOut().trim().split(/[\r\n]/).map(FileInfo.fromWindowsSeparators);
-        } finally {
+        }
+        finally {
             if (proc)
                 proc.close();
         }
-    };
-    BlackboxOutputArtifactTracker.prototype.fixArtifactPaths = function(artifacts, realBasePath,
-                                                                        fakeBasePath) {
+    }
+    
+    private fixArtifactPaths(artifacts: Artifact[], realBasePath: string, fakeBasePath: string) {
         for (var i = 0; i < artifacts.length; ++i)
-            artifacts[i].filePath =
-                realBasePath + artifacts[i].filePath.substr(fakeBasePath.length);
+            artifacts[i].filePath = realBasePath
+            + artifacts[i].filePath.substr(fakeBasePath.length);
         return artifacts;
-    };
-    return BlackboxOutputArtifactTracker;
-})();
-exports.BlackboxOutputArtifactTracker = BlackboxOutputArtifactTracker;
+    }
+}

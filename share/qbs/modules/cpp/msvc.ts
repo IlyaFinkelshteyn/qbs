@@ -27,65 +27,74 @@
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ****************************************************************************/
-var FileInfo = require("../../imports/qbs/FileInfo/fileinfo");
-var ModUtils = require("../../imports/qbs/ModUtils/utils");
-var WindowsUtils = require("../../imports/qbs/WindowsUtils/windows-utils");
-function prepareCompiler(project, product, inputs, outputs, input, output) {
+
+import FileInfo = require("../../imports/qbs/FileInfo/fileinfo");
+import ModUtils = require("../../imports/qbs/ModUtils/utils");
+import WindowsUtils = require("../../imports/qbs/WindowsUtils/windows-utils");
+
+function prepareCompiler(project: Project, product: Product, inputs: ArtifactMap, outputs: ArtifactMap, input: Artifact, output: Artifact) {
     var i;
-    var optimization = ModUtils.moduleProperty(input, "optimization");
-    var debugInformation = ModUtils.moduleProperty(input, "debugInformation");
-    var args = [ '/nologo', '/c' ];
+    var optimization = ModUtils.moduleProperty<string>(input, "optimization")
+    var debugInformation = ModUtils.moduleProperty<boolean>(input, "debugInformation")
+    var args = ['/nologo', '/c']
+
     // Determine which C-language we're compiling
     var tag = ModUtils.fileTagForTargetLanguage(input.fileTags.concat(Object.keys(outputs)));
     if (!["c", "cpp"].contains(tag))
-        throw("unsupported source language");
+        throw ("unsupported source language");
+
     // Whether we're compiling a precompiled header or normal source file
     var pchOutput = outputs[tag + "_pch"] ? outputs[tag + "_pch"][0] : undefined;
+
     // enable unwind semantics
-    args.push("/EHsc");
+    args.push("/EHsc")
     // optimization:
     if (optimization === 'small')
-        args.push('/Os');
+        args.push('/Os')
     else if (optimization === 'fast')
-        args.push('/O2');
+        args.push('/O2')
+
     if (debugInformation) {
-        if (ModUtils.moduleProperty(product, "separateDebugInformation"))
+        if (ModUtils.moduleProperty<boolean>(product, "separateDebugInformation"))
             args.push('/Zi');
         else
             args.push('/Z7');
     }
-    var rtl = ModUtils.moduleProperty(product, "runtimeLibrary");
+
+    var rtl = ModUtils.moduleProperty<string>(product, "runtimeLibrary");
     if (rtl) {
         rtl = (rtl === "static" ? "/MT" : "/MD");
-        if (product.moduleProperty("qbs", "enableDebugCode"))
+        if (product.moduleProperty<boolean>("qbs", "enableDebugCode"))
             rtl += "d";
         args.push(rtl);
     }
+
     // warnings:
-    var warningLevel = ModUtils.moduleProperty(input, "warningLevel");
+    var warningLevel = ModUtils.moduleProperty<string>(input, "warningLevel")
     if (warningLevel === 'none')
-        args.push('/w');
+        args.push('/w')
     if (warningLevel === 'all')
-        args.push('/Wall');
-    if (ModUtils.moduleProperty(input, "treatWarningsAsErrors"))
-        args.push('/WX');
-    var includePaths = ModUtils.moduleProperties(input, 'includePaths');
+        args.push('/Wall')
+    if (ModUtils.moduleProperty<boolean>(input, "treatWarningsAsErrors"))
+        args.push('/WX')
+    var includePaths = ModUtils.moduleProperties<string>(input, 'includePaths');
     for (i in includePaths)
-        args.push('/I' + FileInfo.toWindowsSeparators(includePaths[i]));
-    var systemIncludePaths = ModUtils.moduleProperties(input, 'systemIncludePaths');
+        args.push('/I' + FileInfo.toWindowsSeparators(includePaths[i]))
+    var systemIncludePaths = ModUtils.moduleProperties<string>(input, 'systemIncludePaths');
     for (i in systemIncludePaths)
-        args.push('/I' + FileInfo.toWindowsSeparators(systemIncludePaths[i]));
-    var platformDefines = ModUtils.moduleProperties(input, 'platformDefines');
+        args.push('/I' + FileInfo.toWindowsSeparators(systemIncludePaths[i]))
+    var platformDefines = ModUtils.moduleProperties<string>(input, 'platformDefines');
     for (i in platformDefines)
-        args.push('/D' + platformDefines[i]);
-    var defines = ModUtils.moduleProperties(input, 'defines');
+        args.push('/D' + platformDefines[i])
+    var defines = ModUtils.moduleProperties<string>(input, 'defines');
     for (i in defines)
-        args.push('/D' + defines[i]);
-    var minimumWindowsVersion = ModUtils.moduleProperty(product, "minimumWindowsVersion");
+        args.push('/D' + defines[i])
+
+    var minimumWindowsVersion = ModUtils.moduleProperty<string>(product, "minimumWindowsVersion");
     if (minimumWindowsVersion) {
         var hexVersion = WindowsUtils.getWindowsVersionInFormat(minimumWindowsVersion, 'hex');
         if (hexVersion) {
-            var versionDefs = [ 'WINVER', '_WIN32_WINNT', '_WIN32_WINDOWS' ];
+            var versionDefs = ['WINVER', '_WIN32_WINNT', '_WIN32_WINDOWS'];
             for (i in versionDefs) {
                 args.push('/D' + versionDefs[i] + '=' + hexVersion);
             }
@@ -93,19 +102,23 @@ function prepareCompiler(project, product, inputs, outputs, input, output) {
             print('WARNING: Unknown Windows version "' + minimumWindowsVersion + '"');
         }
     }
-    var objOutput = outputs.obj ? outputs.obj[0] : undefined;
-    args.push('/Fo' + FileInfo.toWindowsSeparators(objOutput.filePath));
-    args.push(FileInfo.toWindowsSeparators(input.filePath));
-    var prefixHeaders = ModUtils.moduleProperties(product, "prefixHeaders");
+
+    var objOutput = outputs.obj ? outputs.obj[0] : undefined
+    args.push('/Fo' + FileInfo.toWindowsSeparators(objOutput.filePath))
+    args.push(FileInfo.toWindowsSeparators(input.filePath))
+
+    var prefixHeaders = ModUtils.moduleProperties<string>(product, "prefixHeaders");
     for (i in prefixHeaders)
         args.push("/FI" + FileInfo.toWindowsSeparators(prefixHeaders[i]));
+
     // Language
     if (tag === "cpp")
         args.push("/TP");
     else if (tag === "c")
         args.push("/TC");
+
     // precompiled header file
-    var pch = ModUtils.moduleProperty(product, "precompiledHeader", tag);
+    var pch = ModUtils.moduleProperty<string>(product, "precompiledHeader", tag);
     if (pch) {
         if (pchOutput) {
             // create PCH
@@ -116,26 +129,27 @@ function prepareCompiler(project, product, inputs, outputs, input, output) {
         } else {
             // use PCH
             var pchHeaderName = FileInfo.toWindowsSeparators(pch);
-            var pchName = FileInfo.toWindowsSeparators(
-                ModUtils.moduleProperty(product, "precompiledHeaderDir") + "\\.obj\\" +
-                product.name + "_" + tag + ".pch");
+            var pchName = FileInfo.toWindowsSeparators(ModUtils.moduleProperty<string>(product, "precompiledHeaderDir")
+                + "\\.obj\\" + product.name + "_" + tag + ".pch");
             args.push("/FI" + pchHeaderName);
             args.push("/Yu" + pchHeaderName);
             args.push("/Fp" + pchName);
         }
     }
-    args = args.concat(ModUtils.moduleProperties(input, 'platformFlags'),
-                       ModUtils.moduleProperties(input, 'flags'),
-                       ModUtils.moduleProperties(input, 'platformFlags', tag),
-                       ModUtils.moduleProperties(input, 'flags', tag));
-    var compilerPath = ModUtils.moduleProperty(product, "compilerPath");
-    var wrapperArgs = ModUtils.moduleProperties(product, "compilerWrapper");
+
+    args = args.concat(ModUtils.moduleProperties<string>(input, 'platformFlags'),
+        ModUtils.moduleProperties<string>(input, 'flags'),
+        ModUtils.moduleProperties<string>(input, 'platformFlags', tag),
+        ModUtils.moduleProperties<string>(input, 'flags', tag));
+
+    var compilerPath = ModUtils.moduleProperty<string>(product, "compilerPath");
+    var wrapperArgs = ModUtils.moduleProperties<string>(product, "compilerWrapper");
     if (wrapperArgs && wrapperArgs.length > 0) {
         args.unshift(compilerPath);
         compilerPath = wrapperArgs.shift();
         args = wrapperArgs.concat(args);
     }
-    var cmd = new Command(compilerPath, args);
+    var cmd = new Command(compilerPath, args)
     cmd.description = (pchOutput ? 'pre' : '') + 'compiling ' + input.fileName;
     if (pchOutput)
         cmd.description += ' (' + tag + ')';
@@ -149,37 +163,39 @@ function prepareCompiler(project, product, inputs, outputs, input, output) {
     };
     return cmd;
 }
-function prepareLinker(project, product, inputs, outputs, input, output) {
+
+function prepareLinker(project: Project, product: Product, inputs: ArtifactMap, outputs: ArtifactMap, input: Artifact, output: Artifact) {
     var i;
-    var linkDLL = (outputs.dynamiclibrary ? true : false);
-    var primaryOutput = (linkDLL ? outputs.dynamiclibrary[0] : outputs.application[0]);
-    var debugInformation = ModUtils.moduleProperty(product, "debugInformation");
-    var generateManifestFiles =
-        !linkDLL && ModUtils.moduleProperty(product, "generateManifestFiles");
-    var args = [ '/nologo' ];
+    var linkDLL = (outputs.dynamiclibrary ? true : false)
+    var primaryOutput = (linkDLL ? outputs.dynamiclibrary[0] : outputs.application[0])
+    var debugInformation = ModUtils.moduleProperty<boolean>(product, "debugInformation")
+    var generateManifestFiles = !linkDLL && ModUtils.moduleProperty<boolean>(product, "generateManifestFiles")
+
+    var args = ['/nologo']
     if (linkDLL) {
         args.push('/DLL');
-        args.push('/IMPLIB:' +
-                  FileInfo.toWindowsSeparators(outputs.dynamiclibrary_import[0].filePath));
+        args.push('/IMPLIB:' + FileInfo.toWindowsSeparators(outputs.dynamiclibrary_import[0].filePath));
     }
+
     if (debugInformation) {
         args.push("/DEBUG");
         if (outputs.debuginfo)
             args.push("/PDB:" + outputs.debuginfo[0].fileName);
     } else {
-        args.push('/INCREMENTAL:NO');
+        args.push('/INCREMENTAL:NO')
     }
-    var minimumWindowsVersion = ModUtils.moduleProperty(product, "minimumWindowsVersion");
-    var subsystemSwitch = undefined;
+
+    var minimumWindowsVersion = ModUtils.moduleProperty<string>(product, "minimumWindowsVersion");
+    var subsystemSwitch: string = undefined;
     if (minimumWindowsVersion || product.consoleApplication !== undefined) {
         // Ensure that we default to console if product.consoleApplication is undefined
         // since that could still be the case if only minimumWindowsVersion had been defined
-        subsystemSwitch =
-            product.consoleApplication === false ? '/SUBSYSTEM:WINDOWS' : '/SUBSYSTEM:CONSOLE';
+        subsystemSwitch = product.consoleApplication === false ? '/SUBSYSTEM:WINDOWS' : '/SUBSYSTEM:CONSOLE';
     }
+
     if (minimumWindowsVersion) {
-        var subsystemVersion =
-            WindowsUtils.getWindowsVersionInFormat(minimumWindowsVersion, 'subsystem');
+        var subsystemVersion = WindowsUtils.getWindowsVersionInFormat(minimumWindowsVersion,
+            'subsystem');
         if (subsystemVersion) {
             subsystemSwitch += ',' + subsystemVersion;
             args.push('/OSVERSION:' + subsystemVersion);
@@ -187,29 +203,35 @@ function prepareLinker(project, product, inputs, outputs, input, output) {
             print('WARNING: Unknown Windows version "' + minimumWindowsVersion + '"');
         }
     }
+
     if (subsystemSwitch)
         args.push(subsystemSwitch);
-    var linkerOutputNativeFilePath;
-    var manifestFileName;
+
+    var linkerOutputNativeFilePath: string;
+    var manifestFileName: string;
     if (generateManifestFiles) {
-        linkerOutputNativeFilePath = FileInfo.toWindowsSeparators(
-            FileInfo.path(primaryOutput.filePath) + "/intermediate." + primaryOutput.fileName);
+        linkerOutputNativeFilePath
+        = FileInfo.toWindowsSeparators(
+            FileInfo.path(primaryOutput.filePath) + "/intermediate."
+            + primaryOutput.fileName);
         manifestFileName = linkerOutputNativeFilePath + ".manifest";
-        args.push('/MANIFEST', '/MANIFESTFILE:' + manifestFileName);
+        args.push('/MANIFEST', '/MANIFESTFILE:' + manifestFileName)
     } else {
         linkerOutputNativeFilePath = FileInfo.toWindowsSeparators(primaryOutput.filePath);
     }
-    var allInputs = (inputs.obj || []).concat(inputs.staticlibrary || []);
+
+    var allInputs = (inputs.obj || []).concat(inputs.staticlibrary || [])
     if (inputs.dynamiclibrary_import)
         allInputs = allInputs.concat(inputs.dynamiclibrary_import);
     for (i in allInputs) {
-        var fileName = FileInfo.toWindowsSeparators(allInputs[i].filePath);
-        args.push(fileName);
+        var fileName = FileInfo.toWindowsSeparators(allInputs[i].filePath)
+        args.push(fileName)
     }
-    function pushLibs(libs) {
+
+    function pushLibs(libs: string[]) {
         if (!libs)
             return;
-        var s = {};
+        var s: { [key: string]: boolean } = {};
         var c = libs.length;
         for (var i = 0; i < c; ++i) {
             var lib = FileInfo.toWindowsSeparators(libs[i]);
@@ -221,31 +243,36 @@ function prepareLinker(project, product, inputs, outputs, input, output) {
             args.push(lib);
         }
     }
-    pushLibs(ModUtils.modulePropertiesFromArtifacts(product, inputs.staticlibrary, "cpp",
-                                                    "staticLibraries"));
-    pushLibs(ModUtils.moduleProperties(product, "dynamicLibraries"));
-    if (product.moduleProperty("cpp", "entryPoint"))
-        args.push("/ENTRY:" + product.moduleProperty("cpp", "entryPoint"));
-    args.push('/OUT:' + linkerOutputNativeFilePath);
-    var libraryPaths = ModUtils.moduleProperties(product, 'libraryPaths');
+
+    pushLibs(ModUtils.modulePropertiesFromArtifacts<string>(product, inputs.staticlibrary,
+        "cpp", "staticLibraries"));
+    pushLibs(ModUtils.moduleProperties<string>(product, "dynamicLibraries"));
+
+    if (product.moduleProperty<string>("cpp", "entryPoint"))
+        args.push("/ENTRY:" + product.moduleProperty<string>("cpp", "entryPoint"));
+
+    args.push('/OUT:' + linkerOutputNativeFilePath)
+    var libraryPaths = ModUtils.moduleProperties<string>(product, 'libraryPaths');
     for (i in libraryPaths) {
-        args.push('/LIBPATH:' + FileInfo.toWindowsSeparators(libraryPaths[i]));
+        args.push('/LIBPATH:' + FileInfo.toWindowsSeparators(libraryPaths[i]))
     }
-    var linkerFlags = ModUtils.moduleProperties(product, 'platformLinkerFlags')
-                          .concat(ModUtils.moduleProperties(product, 'linkerFlags'));
+    var linkerFlags = ModUtils.moduleProperties<string>(product, 'platformLinkerFlags').concat(
+        ModUtils.moduleProperties<string>(product, 'linkerFlags'));
     args = args.concat(linkerFlags);
-    if (ModUtils.moduleProperty(product, "allowUnresolvedSymbols"))
+    if (ModUtils.moduleProperty<boolean>(product, "allowUnresolvedSymbols"))
         args.push("/FORCE:UNRESOLVED");
-    var commands = [];
-    var cmd = new Command(product.moduleProperty("cpp", "linkerPath"), args);
+
+    var commands: AbstractCommand[] = [];
+    var cmd = new Command(product.moduleProperty<string>("cpp", "linkerPath"), args)
     cmd.description = 'linking ' + primaryOutput.fileName;
     cmd.highlight = 'linker';
-    cmd.workingDirectory = FileInfo.path(primaryOutput.filePath);
+    cmd.workingDirectory = FileInfo.path(primaryOutput.filePath)
     cmd.responseFileUsagePrefix = '@';
     cmd.stdoutFilterFunction = function(output) {
         return output.replace(/^ +Creating library.*\r\n$/, "");
     };
     commands.push(cmd);
+
     if (generateManifestFiles) {
         var outputNativeFilePath = FileInfo.toWindowsSeparators(primaryOutput.filePath);
         var jcmd = new JavaScriptCommand();
@@ -253,20 +280,19 @@ function prepareLinker(project, product, inputs, outputs, input, output) {
         jcmd["dst"] = outputNativeFilePath;
         jcmd.sourceCode = function() {
             File.copy(this["src"], this["dst"]);
-        };
-        jcmd.silent = true;
+        }
+        jcmd.silent = true
         commands.push(jcmd);
         args = [
-            '/nologo',
-            '/manifest',
-            manifestFileName,
+            '/nologo', '/manifest', manifestFileName,
             "/outputresource:" + outputNativeFilePath + ";#" + (linkDLL ? "2" : "1")
-        ];
-        cmd = new Command("mt.exe", args);
+        ]
+        cmd = new Command("mt.exe", args)
         cmd.description = 'embedding manifest into ' + primaryOutput.fileName;
         cmd.highlight = 'linker';
-        cmd.workingDirectory = FileInfo.path(primaryOutput.filePath);
+        cmd.workingDirectory = FileInfo.path(primaryOutput.filePath)
         commands.push(cmd);
     }
+
     return commands;
 }

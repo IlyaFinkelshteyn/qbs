@@ -27,9 +27,7 @@
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ****************************************************************************/
-
-var FileInfo = loadExtension("qbs.FileInfo");
-
+var FileInfo = require("../FileInfo/fileinfo");
 function soname(product, outputFileName) {
     if (product.moduleProperty("qbs", "targetOS").contains("darwin")) {
         if (product.moduleProperty("bundle", "isBundle"))
@@ -39,19 +37,17 @@ function soname(product, outputFileName) {
             outputFileName = FileInfo.joinPaths(prefix, outputFileName);
         return outputFileName;
     }
-
     function majorVersion(version, defaultValue) {
         var n = parseInt(version, 10);
         return isNaN(n) ? defaultValue : n;
     }
-
     var version = product.moduleProperty("cpp", "internalVersion");
     if (version) {
         var major = majorVersion(version);
         if (major) {
-            return outputFileName.substr(0, outputFileName.length - version.length)
-                    + major;
+            return outputFileName.substr(0, outputFileName.length - version.length) + major;
         }
     }
     return outputFileName;
 }
+exports.soname = soname;

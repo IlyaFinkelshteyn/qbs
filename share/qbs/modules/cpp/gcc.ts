@@ -27,156 +27,170 @@
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ****************************************************************************/
-// import File = require("../../imports/qbs/File/file");
-var FileInfo = require("../../imports/qbs/FileInfo/fileinfo");
-var ModUtils = require("../../imports/qbs/ModUtils/utils");
-var PathTools = require("../../imports/qbs/PathTools/path-tools");
-var UnixUtils = require("../../imports/qbs/UnixUtils/unix-utils");
-var WindowsUtils = require("../../imports/qbs/WindowsUtils/windows-utils");
-function escapeLinkerFlags(product, linkerFlags) {
+
+//import File = require("../../imports/qbs/File/file");
+import FileInfo = require("../../imports/qbs/FileInfo/fileinfo");
+import ModUtils = require("../../imports/qbs/ModUtils/utils");
+import PathTools = require("../../imports/qbs/PathTools/path-tools");
+import UnixUtils = require("../../imports/qbs/UnixUtils/unix-utils");
+import WindowsUtils = require("../../imports/qbs/WindowsUtils/windows-utils");
+
+function escapeLinkerFlags(product: Product, linkerFlags: string[]) {
     if (!linkerFlags || linkerFlags.length === 0)
         return [];
-    var linkerName = product.moduleProperty("cpp", "linkerName");
-    var needsEscape = linkerName === product.moduleProperty("cpp", "cxxCompilerName") ||
-                      linkerName === product.moduleProperty("cpp", "cCompilerName");
+
+    var linkerName = product.moduleProperty("cpp", "linkerName") ;
+    var needsEscape = linkerName === product.moduleProperty("cpp", "cxxCompilerName")
+            || linkerName === product.moduleProperty("cpp", "cCompilerName");
     if (needsEscape) {
         var sep = ",";
-        var useXlinker = linkerFlags.some(function(f) {
-            return f.contains(sep);
-        });
+        var useXlinker = linkerFlags.some(function (f) { return f.contains(sep); });
         if (useXlinker) {
             // One or more linker arguments contain the separator character itself
             // Use -Xlinker to handle these
-            var xlinkerFlags = [];
-            linkerFlags.map(function(linkerFlag) {
+            var xlinkerFlags: string[] = [];
+            linkerFlags.map(function (linkerFlag) {
                 xlinkerFlags.push("-Xlinker", linkerFlag);
             });
             return xlinkerFlags;
         }
+
         // If no linker arguments contain the separator character we can just use -Wl,
         // which is more compact and easier to read in logs
-        return [ [ "-Wl" ].concat(linkerFlags).join(sep) ];
+        return [["-Wl"].concat(linkerFlags).join(sep)];
     }
+
     return linkerFlags;
 }
-function linkerFlags(product, inputs, output) {
-    var libraryPaths = ModUtils.moduleProperties(product, 'libraryPaths');
-    var dynamicLibraries = ModUtils.moduleProperties(product, "dynamicLibraries");
-    var staticLibraries = ModUtils.modulePropertiesFromArtifacts(product, inputs.staticlibrary,
-                                                                 'cpp', 'staticLibraries');
-    var linkerScripts = ModUtils.moduleProperties(product, 'linkerScripts');
-    var frameworks = ModUtils.moduleProperties(product, 'frameworks');
-    var weakFrameworks = ModUtils.moduleProperties(product, 'weakFrameworks');
-    var rpaths = (product.moduleProperty("cpp", "useRPaths") !== false)
-                     ? ModUtils.moduleProperties(product, 'rpaths')
-                     : undefined;
-    var isDarwin = product.moduleProperties("qbs", "targetOS").contains("darwin");
+
+function linkerFlags(product: Product, inputs: ArtifactMap, output: Artifact) {
+    var libraryPaths = ModUtils.moduleProperties<string>(product, 'libraryPaths');
+    var dynamicLibraries = ModUtils.moduleProperties<string>(product, "dynamicLibraries");
+    var staticLibraries = ModUtils.modulePropertiesFromArtifacts<string>(product, inputs.staticlibrary, 'cpp', 'staticLibraries');
+    var linkerScripts = ModUtils.moduleProperties<string>(product, 'linkerScripts');
+    var frameworks = ModUtils.moduleProperties<string>(product, 'frameworks');
+    var weakFrameworks = ModUtils.moduleProperties<string>(product, 'weakFrameworks');
+    var rpaths = (product.moduleProperty<boolean>("cpp", "useRPaths") !== false)
+            ? ModUtils.moduleProperties<string>(product, 'rpaths') : undefined;
+    var isDarwin = product.moduleProperties<string>("qbs", "targetOS").contains("darwin");
     var i, args = additionalCompilerAndLinkerFlags(product);
+
     if (output.fileTags.contains("dynamiclibrary")) {
         args.push(isDarwin ? "-dynamiclib" : "-shared");
+
         if (isDarwin) {
-            var internalVersion = product.moduleProperty("cpp", "internalVersion");
+            var internalVersion = product.moduleProperty<string>("cpp", "internalVersion");
             if (internalVersion)
                 args.push("-current_version", internalVersion);
-            args = args.concat(escapeLinkerFlags(
-                product, [ "-install_name", UnixUtils.soname(product, output.fileName) ]));
+
+            args = args.concat(escapeLinkerFlags(product, [
+                                                    "-install_name",
+                                                    UnixUtils.soname(product, output.fileName)]));
         } else {
-            args = args.concat(escapeLinkerFlags(
-                product, [ "-soname=" + UnixUtils.soname(product, output.fileName) ]));
+            args = args.concat(escapeLinkerFlags(product, [
+                                                    "-soname=" +
+                                                    UnixUtils.soname(product, output.fileName)]));
         }
     }
+
     if (output.fileTags.contains("loadablemodule"))
         args.push(isDarwin ? "-bundle" : "-shared");
+
     if (output.fileTags.contains("dynamiclibrary") || output.fileTags.contains("loadablemodule")) {
         if (isDarwin)
-            args = args.concat(escapeLinkerFlags(product, [ "-headerpad_max_install_names" ]));
+            args = args.concat(escapeLinkerFlags(product, ["-headerpad_max_install_names"]));
         else
-            args = args.concat(escapeLinkerFlags(product, [ "--as-needed" ]));
+            args = args.concat(escapeLinkerFlags(product, ["--as-needed"]));
     }
+
     var unresolvedSymbolsAction = isDarwin ? "error" : "ignore-in-shared-libs";
     if (ModUtils.moduleProperty(product, "allowUnresolvedSymbols"))
         unresolvedSymbolsAction = isDarwin ? "suppress" : "ignore-all";
-    args = args.concat(escapeLinkerFlags(
-        product, isDarwin ? [ "-undefined", unresolvedSymbolsAction ]
-                          : [ "--unresolved-symbols=" + unresolvedSymbolsAction ]));
+    args = args.concat(escapeLinkerFlags(product, isDarwin
+                                        ? ["-undefined", unresolvedSymbolsAction]
+                                        : ["--unresolved-symbols=" + unresolvedSymbolsAction]));
+
     for (i in rpaths)
-        args = args.concat(escapeLinkerFlags(product, [ "-rpath", rpaths[i] ]));
-    if (product.moduleProperties("qbs", "targetOS").contains('linux')) {
-        var transitiveSOs = ModUtils.modulePropertiesFromArtifacts(
-            product, inputs.dynamiclibrary_copy, 'cpp', 'transitiveSOs');
-        var uniqueSOs = [].uniqueConcat(transitiveSOs);
+        args = args.concat(escapeLinkerFlags(product, ["-rpath", rpaths[i]]));
+
+    if (product.moduleProperties<string>("qbs", "targetOS").contains('linux')) {
+        var transitiveSOs = ModUtils.modulePropertiesFromArtifacts(product,
+                                                                inputs.dynamiclibrary_copy, 'cpp', 'transitiveSOs')
+        var uniqueSOs = [].uniqueConcat(transitiveSOs)
         for (i in uniqueSOs) {
             // The real library is located one level up.
-            args = args.concat(escapeLinkerFlags(
-                product, [ "-rpath-link=" + FileInfo.path(FileInfo.path(uniqueSOs[i])) ]));
+            args = args.concat(escapeLinkerFlags(product, [
+                                                    "-rpath-link=" +
+                                                    FileInfo.path(FileInfo.path(uniqueSOs[i]))]));
         }
     }
-    if (product.moduleProperty("cpp", "entryPoint"))
-        args = args.concat(
-            escapeLinkerFlags(product, [ "-e", product.moduleProperty("cpp", "entryPoint") ]));
-    if (product.moduleProperties("qbs", "toolchain").contains("mingw")) {
+
+    if (product.moduleProperty<string>("cpp", "entryPoint"))
+        args = args.concat(escapeLinkerFlags(product, ["-e", product.moduleProperty<string>("cpp", "entryPoint")]));
+
+    if (product.moduleProperties<string>("qbs", "toolchain").contains("mingw")) {
         if (product.consoleApplication !== undefined)
-            args = args.concat(escapeLinkerFlags(
-                product, [ "-subsystem", product.consoleApplication ? "console" : "windows" ]));
-        var minimumWindowsVersion = ModUtils.moduleProperty(product, "minimumWindowsVersion");
+            args = args.concat(escapeLinkerFlags(product, [
+                                                    "-subsystem",
+                                                    product.consoleApplication
+                                                        ? "console"
+                                                        : "windows"]));
+
+        var minimumWindowsVersion = ModUtils.moduleProperty<string>(product, "minimumWindowsVersion");
         if (minimumWindowsVersion) {
-            var subsystemVersion =
-                WindowsUtils.getWindowsVersionInFormat(minimumWindowsVersion, 'subsystem');
+            var subsystemVersion = WindowsUtils.getWindowsVersionInFormat(minimumWindowsVersion, 'subsystem');
             if (subsystemVersion) {
                 var major = subsystemVersion.split('.')[0];
                 var minor = subsystemVersion.split('.')[1];
+
                 // http://sourceware.org/binutils/docs/ld/Options.html
-                args =
-                    args.concat(escapeLinkerFlags(product, [ "--major-subsystem-version", major ]));
-                args =
-                    args.concat(escapeLinkerFlags(product, [ "--minor-subsystem-version", minor ]));
-                args = args.concat(escapeLinkerFlags(product, [ "--major-os-version", major ]));
-                args = args.concat(escapeLinkerFlags(product, [ "--minor-os-version", minor ]));
+                args = args.concat(escapeLinkerFlags(product, ["--major-subsystem-version", major]));
+                args = args.concat(escapeLinkerFlags(product, ["--minor-subsystem-version", minor]));
+                args = args.concat(escapeLinkerFlags(product, ["--major-os-version", major]));
+                args = args.concat(escapeLinkerFlags(product, ["--minor-os-version", minor]));
             } else {
                 print('WARNING: Unknown Windows version "' + minimumWindowsVersion + '"');
             }
         }
     }
+
     if (inputs.infoplist)
         args.push("-sectcreate", "__TEXT", "__info_plist", inputs.infoplist[0].filePath);
-    if (product.moduleProperties("qbs", "toolchain").contains("clang")) {
+
+    if (product.moduleProperties<string>("qbs", "toolchain").contains("clang")) {
         var stdlib = product.moduleProperty("cpp", "cxxStandardLibrary");
         if (stdlib) {
             args.push("-stdlib=" + stdlib);
         }
-        if (product.moduleProperties("qbs", "targetOS").contains("linux") && stdlib === "libc++")
+
+        if (product.moduleProperties<string>("qbs", "targetOS").contains("linux") && stdlib === "libc++")
             args.push("-lc++abi");
     }
+
     // Flags for library search paths
     if (libraryPaths)
-        args = args.concat(libraryPaths.map(function(path) {
-            return '-L' + path;
-        }));
+        args = args.concat(libraryPaths.map(function(path) { return '-L' + path }));
+
     if (linkerScripts)
-        args = args.concat(linkerScripts.map(function(path) {
-            return '-T' + path;
-        }));
+        args = args.concat(linkerScripts.map(function(path) { return '-T' + path }));
+
     args = args.concat(configFlags(product));
-    args = args.concat(ModUtils.moduleProperties(product, 'platformLinkerFlags'));
-    args = args.concat(ModUtils.moduleProperties(product, 'linkerFlags'));
+    args = args.concat(ModUtils.moduleProperties<string>(product, 'platformLinkerFlags'));
+    args = args.concat(ModUtils.moduleProperties<string>(product, 'linkerFlags'));
+
     args.push("-o", output.filePath);
+
     if (inputs.obj)
-        args = args.concat(inputs.obj.map(function(obj) {
-            return obj.filePath;
-        }));
+        args = args.concat(inputs.obj.map(function (obj) { return obj.filePath }));
+
     // Add filenames of internal library dependencies to the lists
     var staticLibsFromInputs = inputs.staticlibrary
-                                   ? inputs.staticlibrary.map(function(a) {
-                                         return a.filePath;
-                                     })
-                                   : [];
+            ? inputs.staticlibrary.map(function(a) { return a.filePath; }) : [];
     staticLibraries = concatLibsFromArtifacts(staticLibraries, inputs.staticlibrary);
     var dynamicLibsFromInputs = inputs.dynamiclibrary_copy
-                                    ? inputs.dynamiclibrary_copy.map(function(a) {
-                                          return a.filePath;
-                                      })
-                                    : [];
+            ? inputs.dynamiclibrary_copy.map(function(a) { return a.filePath; }) : [];
     dynamicLibraries = concatLibsFromArtifacts(dynamicLibraries, inputs.dynamiclibrary_copy);
+
     for (i in staticLibraries) {
         if (staticLibsFromInputs.contains(staticLibraries[i]) || File.exists(staticLibraries[i])) {
             args.push(staticLibraries[i]);
@@ -184,105 +198,122 @@ function linkerFlags(product, inputs, output) {
             args.push('-l' + staticLibraries[i]);
         }
     }
+
     for (i in dynamicLibraries) {
-        if (dynamicLibsFromInputs.contains(dynamicLibraries[i]) ||
-            File.exists(dynamicLibraries[i])) {
+        if (dynamicLibsFromInputs.contains(dynamicLibraries[i])
+                || File.exists(dynamicLibraries[i])) {
             args.push(dynamicLibraries[i]);
         } else {
             args.push('-l' + dynamicLibraries[i]);
         }
     }
+
     for (i in frameworks) {
         var frameworkExecutablePath = PathTools.frameworkExecutablePath(frameworks[i]);
         if (File.exists(frameworkExecutablePath))
             args.push(frameworkExecutablePath);
         else
-            args = args.concat([ '-framework', frameworks[i] ]);
+            args = args.concat(['-framework', frameworks[i]]);
     }
+
     for (i in weakFrameworks) {
         var frameworkExecutablePath = PathTools.frameworkExecutablePath(weakFrameworks[i]);
         if (File.exists(frameworkExecutablePath))
-            args = args.concat([ '-weak_library', frameworkExecutablePath ]);
+            args = args.concat(['-weak_library', frameworkExecutablePath]);
         else
-            args = args.concat([ '-weak_framework', weakFrameworks[i] ]);
+            args = args.concat(['-weak_framework', weakFrameworks[i]]);
     }
+
     return args;
 }
+
 // for compiler AND linker
-function configFlags(config) {
-    var args = [];
-    if (ModUtils.moduleProperty(config, "debugInformation"))
+function configFlags(config: Module) {
+    var args: string[] = [];
+
+    if (ModUtils.moduleProperty<boolean>(config, "debugInformation"))
         args.push('-g');
-    var opt = ModUtils.moduleProperty(config, "optimization");
+    var opt = ModUtils.moduleProperty<string>(config, "optimization")
     if (opt === 'fast')
         args.push('-O2');
     if (opt === 'small')
         args.push('-Os');
     if (opt === 'none')
         args.push('-O0');
-    var warnings = ModUtils.moduleProperty(config, "warningLevel");
+
+    var warnings = ModUtils.moduleProperty<string>(config, "warningLevel")
     if (warnings === 'none')
         args.push('-w');
     if (warnings === 'all') {
         args.push('-Wall');
         args.push('-Wextra');
     }
-    if (ModUtils.moduleProperty(config, "treatWarningsAsErrors"))
+    if (ModUtils.moduleProperty<boolean>(config, "treatWarningsAsErrors"))
         args.push('-Werror');
-    var frameworkPaths = ModUtils.moduleProperties(config, 'frameworkPaths');
+
+    var frameworkPaths = ModUtils.moduleProperties<string>(config, 'frameworkPaths');
     if (frameworkPaths)
-        args = args.concat(frameworkPaths.map(function(path) {
-            return '-F' + path;
-        }));
-    var systemFrameworkPaths = ModUtils.moduleProperties(config, 'systemFrameworkPaths');
+        args = args.concat(frameworkPaths.map(function(path) { return '-F' + path }));
+
+    var systemFrameworkPaths = ModUtils.moduleProperties<string>(config, 'systemFrameworkPaths');
     if (systemFrameworkPaths)
-        args = args.concat(systemFrameworkPaths.map(function(path) {
-            return '-iframework' + path;
-        }));
+        args = args.concat(systemFrameworkPaths.map(function(path) { return '-iframework' + path }));
+
     return args;
 }
-function languageTagFromFileExtension(fileName) {
+
+function languageTagFromFileExtension(fileName: string) {
     var i = fileName.lastIndexOf('.');
     if (i === -1)
         return;
-    var m = {
-        "c" : "c",
-        "C" : "cpp",
-        "cpp" : "cpp",
-        "cxx" : "cpp",
-        "c++" : "cpp",
-        "cc" : "cpp",
-        "m" : "objc",
-        "mm" : "objcpp",
-        "s" : "asm",
-        "S" : "asm_cpp",
-        "sx" : "asm_cpp"
+    var m: { [key: string]: string } = {
+        "c"     : "c",
+        "C"     : "cpp",
+        "cpp"   : "cpp",
+        "cxx"   : "cpp",
+        "c++"   : "cpp",
+        "cc"    : "cpp",
+        "m"     : "objc",
+        "mm"    : "objcpp",
+        "s"     : "asm",
+        "S"     : "asm_cpp",
+        "sx"    : "asm_cpp"
     };
     return m[fileName.substring(i + 1)];
 }
-function effectiveCompilerInfo(input, output) {
-    var compilerPath, language;
+
+function effectiveCompilerInfo(input: Artifact, output: Artifact) {
+    var compilerPath: string, language: string;
     var tag = ModUtils.fileTagForTargetLanguage(input.fileTags.concat(output.fileTags));
+
     // Whether we're compiling a precompiled header or normal source file
     var pchOutput = output.fileTags.contains(tag + "_pch");
-    var compilerPathByLanguage = ModUtils.moduleProperty(input, "compilerPathByLanguage");
+
+    var compilerPathByLanguage = ModUtils.moduleProperty<string>(input, "compilerPathByLanguage");
     if (compilerPathByLanguage)
         compilerPath = compilerPathByLanguage[tag];
     if (!compilerPath || tag !== languageTagFromFileExtension(input.fileName))
         language = languageName(tag) + (pchOutput ? '-header' : '');
     if (!compilerPath)
         // fall back to main compiler
-        compilerPath = ModUtils.moduleProperty(input, "compilerPath");
-    return {path : compilerPath, language : language, tag : tag};
+        compilerPath = ModUtils.moduleProperty<string>(input, "compilerPath");
+    return {
+        path: compilerPath,
+        language: language,
+        tag: tag
+    };
 }
+
 // ### what we actually need here is something like product.usedFileTags
 //     that contains all fileTags that have been used when applying the rules.
-function compilerFlags(product, input, output) {
-    var includePaths = ModUtils.moduleProperties(input, 'includePaths');
-    var systemIncludePaths = ModUtils.moduleProperties(input, 'systemIncludePaths');
-    var platformDefines = ModUtils.moduleProperties(input, 'platformDefines');
-    var defines = ModUtils.moduleProperties(input, 'defines');
-    var EffectiveTypeEnum = {UNKNOWN : 0, LIB : 1, APP : 2};
+function compilerFlags(product: Product, input: Artifact, output: Artifact) {
+    var includePaths = ModUtils.moduleProperties<string>(input, 'includePaths');
+    var systemIncludePaths = ModUtils.moduleProperties<string>(input, 'systemIncludePaths');
+
+    var platformDefines = ModUtils.moduleProperties<string>(input, 'platformDefines');
+    var defines = ModUtils.moduleProperties<string>(input, 'defines');
+
+    var EffectiveTypeEnum = { UNKNOWN: 0, LIB: 1, APP: 2 };
     var effectiveType = EffectiveTypeEnum.UNKNOWN;
     var libTypes = {staticlibrary : 1, dynamiclibrary : 1};
     var appTypes = {application : 1};
@@ -296,82 +327,84 @@ function compilerFlags(product, input, output) {
             break;
         }
     }
+
     // Determine which C-language we're compiling
     var tag = ModUtils.fileTagForTargetLanguage(input.fileTags.concat(output.fileTags));
     if (!["c", "cpp", "objc", "objcpp", "asm", "asm_cpp"].contains(tag))
-        throw("unsupported source language: " + tag);
+        throw ("unsupported source language: " + tag);
+
     var compilerInfo = effectiveCompilerInfo(input, output);
+
     var args = additionalCompilerAndLinkerFlags(product);
     args = args.concat(configFlags(input));
     args.push('-pipe');
-    var useArc = ModUtils.moduleProperty(input, "automaticReferenceCounting");
+
+    var useArc = ModUtils.moduleProperty<boolean>(input, "automaticReferenceCounting");
     if (useArc !== undefined && (tag === "objc" || tag === "objcpp")) {
         args.push(useArc ? "-fobjc-arc" : "-fno-objc-arc");
     }
+
     var visibility = ModUtils.moduleProperty(input, 'visibility');
-    if (!product.type.contains('staticlibrary') &&
-        !product.moduleProperties("qbs", "toolchain").contains("mingw")) {
+    if (!product.type.contains('staticlibrary')
+            && !product.moduleProperties<string>("qbs", "toolchain").contains("mingw")) {
         if (visibility === 'hidden' || visibility === 'minimal')
             args.push('-fvisibility=hidden');
         if ((visibility === 'hiddenInlines' || visibility === 'minimal') && tag === 'cpp')
             args.push('-fvisibility-inlines-hidden');
         if (visibility === 'default')
-            args.push('-fvisibility=default');
+            args.push('-fvisibility=default')
     }
-    var prefixHeaders = ModUtils.moduleProperties(input, "prefixHeaders");
+
+    var prefixHeaders = ModUtils.moduleProperties<string>(input, "prefixHeaders");
     for (i in prefixHeaders) {
         args.push('-include');
         args.push(prefixHeaders[i]);
     }
+
     if (compilerInfo.language)
         // Only push '-x language' if we have to.
         args.push("-x", compilerInfo.language);
-    args = args.concat(ModUtils.moduleProperties(input, 'platformFlags'),
-                       ModUtils.moduleProperties(input, 'flags'),
-                       ModUtils.moduleProperties(input, 'platformFlags', tag),
-                       ModUtils.moduleProperties(input, 'flags', tag));
+
+    args = args.concat(ModUtils.moduleProperties<string>(input, 'platformFlags'),
+                    ModUtils.moduleProperties<string>(input, 'flags'),
+                    ModUtils.moduleProperties<string>(input, 'platformFlags', tag),
+                    ModUtils.moduleProperties<string>(input, 'flags', tag));
+
     var pchOutput = output.fileTags.contains(compilerInfo.tag + "_pch");
-    if (!pchOutput && ModUtils.moduleProperty(product, 'precompiledHeader', tag)) {
+    if (!pchOutput && ModUtils.moduleProperty<string>(product, 'precompiledHeader', tag)) {
         var pchFilePath = FileInfo.joinPaths(
-            ModUtils.moduleProperty(product, "precompiledHeaderDir"), product.name + "_" + tag);
+            ModUtils.moduleProperty<string>(product, "precompiledHeaderDir"),
+            product.name + "_" + tag);
         args.push('-include', pchFilePath);
     }
-    var positionIndependentCode = input.moduleProperty('cpp', 'positionIndependentCode');
+
+    var positionIndependentCode = input.moduleProperty<boolean>('cpp', 'positionIndependentCode')
     if (effectiveType === EffectiveTypeEnum.LIB) {
-        if (positionIndependentCode !== false &&
-            !product.moduleProperties("qbs", "toolchain").contains("mingw"))
+        if (positionIndependentCode !== false && !product.moduleProperties<string>("qbs", "toolchain").contains("mingw"))
             args.push('-fPIC');
     } else if (effectiveType === EffectiveTypeEnum.APP) {
-        if (positionIndependentCode &&
-            !product.moduleProperty("qbs", "toolchain").contains("mingw"))
+        if (positionIndependentCode && !product.moduleProperty("qbs", "toolchain").contains("mingw"))
             args.push('-fPIE');
     } else {
-        throw("The product's type must be in " +
-              JSON.stringify(Object.getOwnPropertyNames(libTypes)
-                                 .concat(Object.getOwnPropertyNames(appTypes))) +
-              ". But it is " + JSON.stringify(product.type) + '.');
+        throw ("The product's type must be in " + JSON.stringify(
+                Object.getOwnPropertyNames(libTypes).concat(Object.getOwnPropertyNames(appTypes)))
+                + ". But it is " + JSON.stringify(product.type) + '.');
     }
     var cppFlags = ModUtils.moduleProperties(input, 'cppFlags');
     for (i in cppFlags)
-        args.push('-Wp,' + cppFlags[i]);
+        args.push('-Wp,' + cppFlags[i])
+
     if (platformDefines)
-        args = args.concat(platformDefines.map(function(define) {
-            return '-D' + define;
-        }));
+        args = args.concat(platformDefines.map(function(define) { return '-D' + define }));
     if (defines)
-        args = args.concat(defines.map(function(define) {
-            return '-D' + define;
-        }));
+        args = args.concat(defines.map(function(define) { return '-D' + define }));
     if (includePaths)
-        args = args.concat(includePaths.map(function(path) {
-            return '-I' + path;
-        }));
+        args = args.concat(includePaths.map(function(path) { return '-I' + path }));
     if (systemIncludePaths)
-        args = args.concat(systemIncludePaths.map(function(path) {
-            return '-isystem' + path;
-        }));
-    var minimumWindowsVersion = ModUtils.moduleProperty(input, "minimumWindowsVersion");
-    if (minimumWindowsVersion && product.moduleProperties("qbs", "targetOS").contains("windows")) {
+        args = args.concat(systemIncludePaths.map(function(path) { return '-isystem' + path }));
+
+    var minimumWindowsVersion = ModUtils.moduleProperty<string>(input, "minimumWindowsVersion");
+    if (minimumWindowsVersion && product.moduleProperties<string>("qbs", "targetOS").contains("windows")) {
         var hexVersion = WindowsUtils.getWindowsVersionInFormat(minimumWindowsVersion, 'hex');
         if (hexVersion) {
             var versionDefs = [ 'WINVER', '_WIN32_WINNT', '_WIN32_WINDOWS' ];
@@ -381,88 +414,106 @@ function compilerFlags(product, input, output) {
             print('WARNING: Unknown Windows version "' + minimumWindowsVersion + '"');
         }
     }
+
     if (tag === "c" || tag === "objc") {
-        var cVersion = ModUtils.moduleProperty(input, "cLanguageVersion");
+        var cVersion = ModUtils.moduleProperty<string>(input, "cLanguageVersion");
         if (cVersion) {
-            var gccCVersionsMap = {
-                "c89" : "c89",
-                "c99" : "c99",
-                "c11" : "c1x" // Deprecated, but compatible with older gcc versions.
+            var gccCVersionsMap: { [key: string]: string } = {
+                "c89": "c89",
+                "c99": "c99",
+                "c11": "c1x" // Deprecated, but compatible with older gcc versions.
             };
             args.push("-std=" + gccCVersionsMap[cVersion]);
         }
     }
+
     if (tag === "cpp" || tag === "objcpp") {
-        var cxxVersion = ModUtils.moduleProperty(input, "cxxLanguageVersion");
+        var cxxVersion = ModUtils.moduleProperty<string>(input, "cxxLanguageVersion");
         if (cxxVersion) {
-            var gccCxxVersionsMap = {"c++98" : "c++98", "c++11" : "c++0x", "c++14" : "c++1y"};
+            var gccCxxVersionsMap: { [key: string]: string } = {
+                "c++98": "c++98",
+                "c++11": "c++0x", // Deprecated, but compatible with older gcc versions.
+                "c++14": "c++1y"
+            };
             args.push("-std=" + gccCxxVersionsMap[cxxVersion]);
         }
-        var cxxStandardLibrary = product.moduleProperty("cpp", "cxxStandardLibrary");
-        if (cxxStandardLibrary && product.moduleProperties("qbs", "toolchain").contains("clang")) {
+
+        var cxxStandardLibrary = product.moduleProperty<string>("cpp", "cxxStandardLibrary");
+        if (cxxStandardLibrary && product.moduleProperties<string>("qbs", "toolchain").contains("clang")) {
             args.push("-stdlib=" + cxxStandardLibrary);
         }
     }
+
     args.push("-o", output.filePath);
     args.push("-c", input.filePath);
+
     return args;
 }
-function haveTargetOption(product) {
-    var toolchain = product.moduleProperties("qbs", "toolchain");
-    var major = product.moduleProperty("cpp", "compilerVersionMajor");
-    var minor = product.moduleProperty("cpp", "compilerVersionMinor");
+
+function haveTargetOption(product: Product) {
+    var toolchain = product.moduleProperties<string>("qbs", "toolchain");
+    var major = product.moduleProperty<number>("cpp", "compilerVersionMajor");
+    var minor = product.moduleProperty<number>("cpp", "compilerVersionMinor");
+
     // Apple Clang 3.1 (shipped with Xcode 4.3) just happened to also correspond to LLVM 3.1,
     // so no special version check is needed for Apple
     return toolchain.contains("clang") && (major > 3 || (major === 3 && minor >= 1));
 }
-function additionalCompilerAndLinkerFlags(product) {
-    var args = [];
+
+function additionalCompilerAndLinkerFlags(product: Product) {
+    var args: string[] = []
+
     if (haveTargetOption(product)) {
-        args.push("-target", product.moduleProperty("cpp", "target"));
+        args.push("-target", product.moduleProperty<string>("cpp", "target"));
     } else {
-        var arch = ModUtils.moduleProperty(product, "architecture");
-        if (product.moduleProperties("qbs", "targetOS").contains("darwin"))
+        var arch = ModUtils.moduleProperty<string>(product, "architecture");
+        if (product.moduleProperties<string>("qbs", "targetOS").contains("darwin"))
             args.push("-arch", arch);
+
         if (arch === 'x86_64')
             args.push('-m64');
         else if (arch === 'x86')
             args.push('-m32');
+
         var minimumOsxVersion = ModUtils.moduleProperty(product, "minimumOsxVersion");
-        if (minimumOsxVersion && product.moduleProperties("qbs", "targetOS").contains("osx"))
+        if (minimumOsxVersion && product.moduleProperties<string>("qbs", "targetOS").contains("osx"))
             args.push('-mmacosx-version-min=' + minimumOsxVersion);
+
         var minimumiOSVersion = ModUtils.moduleProperty(product, "minimumIosVersion");
-        if (minimumiOSVersion && product.moduleProperties("qbs", "targetOS").contains("ios")) {
-            if (product.moduleProperties("qbs", "targetOS").contains("ios-simulator"))
+        if (minimumiOSVersion && product.moduleProperties<string>("qbs", "targetOS").contains("ios")) {
+            if (product.moduleProperties<string>("qbs", "targetOS").contains("ios-simulator"))
                 args.push('-mios-simulator-version-min=' + minimumiOSVersion);
             else
                 args.push('-miphoneos-version-min=' + minimumiOSVersion);
         }
+
         var minimumWatchosVersion = ModUtils.moduleProperty(product, "minimumWatchosVersion");
-        if (minimumWatchosVersion &&
-            product.moduleProperties("qbs", "targetOS").contains("watchos")) {
-            if (product.moduleProperties("qbs", "targetOS").contains("watchos-simulator"))
+        if (minimumWatchosVersion && product.moduleProperties<string>("qbs", "targetOS").contains("watchos")) {
+            if (product.moduleProperties<string>("qbs", "targetOS").contains("watchos-simulator"))
                 args.push("-mwatchos-simulator-version-min=" + minimumWatchosVersion);
             else
                 args.push("-mwatchos-version-min=" + minimumWatchosVersion);
         }
     }
-    var sysroot = ModUtils.moduleProperty(product, "sysroot");
+
+    var sysroot = ModUtils.moduleProperty<string>(product, "sysroot");
     if (sysroot) {
-        if (product.moduleProperties("qbs", "targetOS").contains("darwin"))
+        if (product.moduleProperties<string>("qbs", "targetOS").contains("darwin"))
             args.push("-isysroot", sysroot);
         else
             args.push("--sysroot=" + sysroot);
     }
-    var requireAppExtensionSafeApi = ModUtils.moduleProperty(product, "requireAppExtensionSafeApi");
-    if (requireAppExtensionSafeApi !== undefined &&
-        product.moduleProperties("qbs", "targetOS").contains("darwin")) {
-        args.push(requireAppExtensionSafeApi ? "-fapplication-extension"
-                                             : "-fno-application-extension");
+
+    var requireAppExtensionSafeApi = ModUtils.moduleProperty<boolean>(product, "requireAppExtensionSafeApi");
+    if (requireAppExtensionSafeApi !== undefined && product.moduleProperties<string>("qbs", "targetOS").contains("darwin")) {
+        args.push(requireAppExtensionSafeApi ? "-fapplication-extension" : "-fno-application-extension");
     }
-    return args;
+
+    return args
 }
+
 // Returns the GCC language name equivalent to fileTag, accepted by the -x argument
-function languageName(fileTag) {
+function languageName(fileTag: string) {
     if (fileTag === 'c')
         return 'c';
     else if (fileTag === 'cpp')
@@ -476,17 +527,20 @@ function languageName(fileTag) {
     else if (fileTag === 'asm_cpp')
         return 'assembler-with-cpp';
 }
-function prepareCompiler(project, product, inputs, outputs, input, output) {
+
+function prepareCompiler(project: Project, product: Product, inputs: ArtifactMap, outputs: ArtifactMap, input: Artifact, output: Artifact) {
     var compilerInfo = effectiveCompilerInfo(input, output);
     var compilerPath = compilerInfo.path;
     var pchOutput = output.fileTags.contains(compilerInfo.tag + "_pch");
+
     var args = compilerFlags(product, input, output);
-    var wrapperArgs = ModUtils.moduleProperties(product, "compilerWrapper");
+    var wrapperArgs = ModUtils.moduleProperties<string>(product, "compilerWrapper");
     if (wrapperArgs && wrapperArgs.length > 0) {
         args.unshift(compilerPath);
         compilerPath = wrapperArgs.shift();
         args = wrapperArgs.concat(args);
     }
+
     var cmd = new Command(compilerPath, args);
     cmd.description = (pchOutput ? 'pre' : '') + 'compiling ' + input.fileName;
     if (pchOutput)
@@ -495,10 +549,12 @@ function prepareCompiler(project, product, inputs, outputs, input, output) {
     cmd.responseFileUsagePrefix = '@';
     return cmd;
 }
+
 // Concatenates two arrays of library names and preserves the dependency order that ld needs.
 function concatLibs(libs, deplibs) {
     var r = [];
     var s = {};
+
     function addLibs(lst) {
         for (var i = lst.length; --i >= 0;) {
             var lib = lst[i];
@@ -508,23 +564,28 @@ function concatLibs(libs, deplibs) {
             }
         }
     }
+
     addLibs(deplibs);
     addLibs(libs);
     return r;
 }
-function collectTransitiveSos(inputs) {
-    var result = [];
+
+function collectTransitiveSos(inputs: ArtifactMap)
+{
+    var result: string[] = [];
     for (var i in inputs.dynamiclibrary_copy) {
         var lib = inputs.dynamiclibrary_copy[i];
-        var impliedLibs = ModUtils.moduleProperties(lib, 'transitiveSOs');
-        var libsToAdd = [ lib.filePath ].concat(impliedLibs);
+        var impliedLibs = ModUtils.moduleProperties<string>(lib, 'transitiveSOs');
+        var libsToAdd = [lib.filePath].concat(impliedLibs);
         result = result.concat(libsToAdd);
     }
     result = concatLibs([], result);
     return result;
 }
-function prepareLinker(project, product, inputs, outputs, input, output) {
-    var i, primaryOutput, cmd, commands = [];
+
+function prepareLinker(project: Project, product: Product, inputs: ArtifactMap, outputs: ArtifactMap, input: Artifact, output: Artifact) {
+    var i, primaryOutput, cmd: AbstractCommand, commands: AbstractCommand[] = [];
+
     if (outputs.application) {
         primaryOutput = outputs.application[0];
     } else if (outputs.dynamiclibrary) {
@@ -532,39 +593,48 @@ function prepareLinker(project, product, inputs, outputs, input, output) {
     } else if (outputs.loadablemodule) {
         primaryOutput = outputs.loadablemodule[0];
     }
+
     cmd = new Command(ModUtils.moduleProperty(product, "linkerPath"),
-                      linkerFlags(product, inputs, primaryOutput));
+                    linkerFlags(product, inputs, primaryOutput));
     cmd.description = 'linking ' + primaryOutput.fileName;
     cmd.highlight = 'linker';
     cmd.responseFileUsagePrefix = '@';
     commands.push(cmd);
+
     if (outputs.debuginfo) {
         if (product.moduleProperty("qbs", "targetOS").contains("darwin")) {
             var dsymPath = outputs.debuginfo[0].filePath;
             if (outputs.debuginfo_bundle && outputs.debuginfo_bundle[0])
                 dsymPath = outputs.debuginfo_bundle[0].filePath;
-            var flags = ModUtils.moduleProperties(product, "dsymutilFlags") || [];
-            cmd = new Command(ModUtils.moduleProperty(product, "dsymutilPath"),
-                              flags.concat([ "-o", dsymPath, primaryOutput.filePath ]));
+            var flags = ModUtils.moduleProperties<string>(product, "dsymutilFlags") || [];
+            cmd = new Command(ModUtils.moduleProperty<string>(product, "dsymutilPath"), flags.concat([
+                "-o", dsymPath, primaryOutput.filePath
+            ]));
             cmd.description = "generating dSYM for " + product.name;
             commands.push(cmd);
         } else {
-            cmd = new Command(
-                ModUtils.moduleProperty(product, "objcopyPath"),
-                [ "--only-keep-debug", primaryOutput.filePath, outputs.debuginfo[0].filePath ]);
+            cmd = new Command(ModUtils.moduleProperty<string>(product, "objcopyPath"), [
+                                "--only-keep-debug", primaryOutput.filePath,
+                                outputs.debuginfo[0].filePath
+                            ]);
             cmd.silent = true;
             commands.push(cmd);
-            cmd = new Command(ModUtils.moduleProperty(product, "stripPath"),
-                              [ "--strip-debug", primaryOutput.filePath ]);
+
+            cmd = new Command(ModUtils.moduleProperty<string>(product, "stripPath"), [
+                                "--strip-debug", primaryOutput.filePath
+                            ]);
             cmd.silent = true;
             commands.push(cmd);
-            cmd = new Command(
-                ModUtils.moduleProperty(product, "objcopyPath"),
-                [ "--add-gnu-debuglink=" + outputs.debuginfo[0].filePath, primaryOutput.filePath ]);
+
+            cmd = new Command(ModUtils.moduleProperty<string>(product, "objcopyPath"), [
+                                "--add-gnu-debuglink=" + outputs.debuginfo[0].filePath,
+                                primaryOutput.filePath
+                            ]);
             cmd.silent = true;
             commands.push(cmd);
         }
     }
+
     if (outputs.dynamiclibrary) {
         // Update the copy, if any global symbols have changed.
         cmd = new JavaScriptCommand();
@@ -576,14 +646,14 @@ function prepareLinker(project, product, inputs, outputs, input, output) {
                 File.copy(sourceFilePath, targetFilePath);
                 return;
             }
-            if (product.moduleProperties("qbs", "toolchain").contains("mingw")) {
+            if (product.moduleProperties<string>("qbs", "toolchain").contains("mingw")) {
                 // mingw's nm tool does not work correctly.
                 File.copy(sourceFilePath, targetFilePath);
                 return;
             }
             var process = new Process();
-            var command = ModUtils.moduleProperty(product, "nmPath");
-            var args = [ "-g", "-D", "-P" ];
+            var command = ModUtils.moduleProperty<string>(product, "nmPath");
+            var args = ["-g", "-D", "-P"];
             if (process.exec(command, args.concat(sourceFilePath), false) !== 0) {
                 // Failure to run the nm tool is not fatal. We just fall back to the
                 // "always relink" behavior.
@@ -596,6 +666,7 @@ function prepareLinker(project, product, inputs, outputs, input, output) {
                 return;
             }
             var globalSymbolsTarget = process.readStdOut();
+
             var globalSymbolsSourceLines = globalSymbolsSource.split('\n');
             var globalSymbolsTargetLines = globalSymbolsTarget.split('\n');
             if (globalSymbolsSourceLines.length !== globalSymbolsTargetLines.length) {
@@ -604,6 +675,7 @@ function prepareLinker(project, product, inputs, outputs, input, output) {
                     File.copy(sourceFilePath, targetFilePath);
                     return;
                 }
+
                 // Collect undefined symbols and remove them from the symbol lists.
                 // GNU nm has the "--defined" option for this purpose, but POSIX nm does not.
                 args.push("-u");
@@ -618,60 +690,69 @@ function prepareLinker(project, product, inputs, outputs, input, output) {
                 }
                 var undefinedSymbolsTarget = process.readStdOut();
                 process.close();
+
                 var undefinedSymbolsSourceLines = undefinedSymbolsSource.split('\n');
                 var undefinedSymbolsTargetLines = undefinedSymbolsTarget.split('\n');
+
                 globalSymbolsSourceLines = globalSymbolsSourceLines.filter(function(line) {
-                    return !undefinedSymbolsSourceLines.contains(line);
-                });
+                    return !undefinedSymbolsSourceLines.contains(line); });
                 globalSymbolsTargetLines = globalSymbolsTargetLines.filter(function(line) {
-                    return !undefinedSymbolsTargetLines.contains(line);
-                });
+                    return !undefinedSymbolsTargetLines.contains(line); });
                 if (globalSymbolsSourceLines.length !== globalSymbolsTargetLines.length) {
                     File.copy(sourceFilePath, targetFilePath);
                     return;
                 }
             }
+
             while (globalSymbolsSourceLines.length > 0) {
                 var sourceLine = globalSymbolsSourceLines.shift();
                 var targetLine = globalSymbolsTargetLines.shift();
                 var sourceLineElems = sourceLine.split(/\s+/);
                 var targetLineElems = targetLine.split(/\s+/);
                 if (sourceLineElems[0] !== targetLineElems[0] // Object name.
-                    || sourceLineElems[1] !== targetLineElems[1]) {
+                        || sourceLineElems[1] !== targetLineElems[1]) { // Object type
                     File.copy(sourceFilePath, targetFilePath);
                     return;
                 }
             }
-        };
+        }
         commands.push(cmd);
+
         // Create symlinks from {libfoo, libfoo.1, libfoo.1.0} to libfoo.1.0.0
         var links = outputs["dynamiclibrary_symlink"];
         var symlinkCount = links ? links.length : 0;
         for (i = 0; i < symlinkCount; ++i) {
-            cmd = new Command("ln", [ "-sf", primaryOutput.fileName, links[i].filePath ]);
+            cmd = new Command("ln", ["-sf", primaryOutput.fileName,
+                                    links[i].filePath]);
             cmd.highlight = "filegen";
-            cmd.description = "creating symbolic link '" + links[i].fileName + "'";
+            cmd.description = "creating symbolic link '"
+                    + links[i].fileName + "'";
             cmd.workingDirectory = FileInfo.path(primaryOutput.filePath);
             commands.push(cmd);
         }
     }
-    var actualSigningIdentity = product.moduleProperty("xcode", "actualSigningIdentity");
-    var codesignDisplayName = product.moduleProperty("xcode", "actualSigningIdentityDisplayName");
-    if (actualSigningIdentity && !product.moduleProperty("bundle", "isBundle")) {
-        cmd = new Command(product.moduleProperty("xcode", "codesignPath"),
-                          [ "--force", "--sign", actualSigningIdentity, primaryOutput.filePath ]);
-        cmd.description = "codesign " + primaryOutput.fileName + " using " + codesignDisplayName +
-                          " (" + actualSigningIdentity + ")";
+
+    var actualSigningIdentity = product.moduleProperty<string>("xcode", "actualSigningIdentity");
+    var codesignDisplayName = product.moduleProperty<string>("xcode", "actualSigningIdentityDisplayName");
+    if (actualSigningIdentity && !product.moduleProperty<boolean>("bundle", "isBundle")) {
+        cmd = new Command(product.moduleProperty<string>("xcode", "codesignPath"),
+                        ["--force", "--sign", actualSigningIdentity,
+                        primaryOutput.filePath]);
+        cmd.description = "codesign "
+                + primaryOutput.fileName
+                + " using " + codesignDisplayName
+                + " (" + actualSigningIdentity + ")";
         commands.push(cmd);
     }
+
     return commands;
 }
-function concatLibsFromArtifacts(libs, artifacts) {
+
+function concatLibsFromArtifacts(libs, artifacts)
+{
     if (!artifacts)
         return libs;
-    var deps = artifacts.map(function(a) {
-        return a.filePath;
-    });
+    var deps = artifacts.map(function (a) { return a.filePath; });
     deps.reverse();
     return concatLibs(deps, libs);
 }
