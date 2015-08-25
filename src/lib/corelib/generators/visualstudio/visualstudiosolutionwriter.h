@@ -29,53 +29,37 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#ifndef QBS_VISUALSTUDIOSOLUTIONWRITER_H
+#define QBS_VISUALSTUDIOSOLUTIONWRITER_H
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
+#include "visualstudioxmlprojectwriter.h"
 
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "visualstudio/visualstudiogenerator.h"
+#include <QUuid>
 
 namespace qbs {
 
-using namespace Internal;
+namespace Internal { class VisualStudioVersionInfo; }
 
-ProjectGeneratorManager::~ProjectGeneratorManager()
+class VisualStudioSolutionWriter
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
-}
+public:
+    VisualStudioSolutionWriter(const VisualStudioXmlProjectWriter &projectWriter);
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
+    static QString fileExtension();
 
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QList<QSharedPointer<ProjectGenerator> > generators;
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
+    bool write(const MsvsPreparedProject &project, const QString &filePath);
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
+protected:
+    void writeProjectSubFolders(QTextStream &solutionOutStream,
+                                const MsvsPreparedProject &project) const;
+    void writeNestedProjects(QTextStream &solutionOutStream,
+                             const MsvsPreparedProject &project) const;
 
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
+private:
+    const VisualStudioXmlProjectWriter &m_projectWriter;
+    const QUuid m_solutionGuid;
+};
 
 } // namespace qbs
+
+#endif // QBS_VISUALSTUDIOSOLUTIONWRITER_H

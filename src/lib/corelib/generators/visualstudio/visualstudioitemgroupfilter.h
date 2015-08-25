@@ -29,53 +29,28 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#ifndef QBS_VISUALSTUDIOITEMGROUPFILTER_H
+#define QBS_VISUALSTUDIOITEMGROUPFILTER_H
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
-
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "visualstudio/visualstudiogenerator.h"
+#include <QSet>
 
 namespace qbs {
 
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
+struct VisualStudioItemGroupFilter
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
-}
+    QSet<QString> extensions;
+    QString title;
+    QString additionalOptions;
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
+    VisualStudioItemGroupFilter(const QSet<QString> &extensions, const QString &title,
+                  const QString &additionalOptions = QString());
+    VisualStudioItemGroupFilter(const QString &extensions, const QString &title,
+                  const QString &additionalOptions = QString());
+    bool matchesFilter(const QString &filePath) const;
 
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QList<QSharedPointer<ProjectGenerator> > generators;
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
-
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
-
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
+    static QList<VisualStudioItemGroupFilter> defaultItemGroupFilters();
+};
 
 } // namespace qbs
+
+#endif // QBS_VISUALSTUDIOITEMGROUPFILTER_H

@@ -29,53 +29,36 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#ifndef QBS_MSBUILDPROJECTWRITER_H
+#define QBS_MSBUILDPROJECTWRITER_H
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
-
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "visualstudio/visualstudiogenerator.h"
+#include "visualstudioxmlprojectwriter.h"
 
 namespace qbs {
 
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
+class MSBuildProjectWriter : public VisualStudioXmlProjectWriter
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
+public:
+    using VisualStudioXmlProjectWriter::VisualStudioXmlProjectWriter;
+    bool writeProjectFile(const MsvsPreparedProduct &product,
+                          const QString &baseBuildDirectory) const override;
+    QString projectFileExtension() const override;
+
+protected:
+    bool writeFiltersFile(const MsvsPreparedProduct &product,
+                          const QString &baseBuildDirectory) const;
+
+    void writeHeader(QXmlStreamWriter &xmlWriter, const MsvsPreparedProduct &product) const override;
+    void writeConfiguration(QXmlStreamWriter &xmlWriter,
+                            const MsvsPreparedProduct &product,
+                            const MsvsProjectConfiguration &buildTask,
+                            const ProductData &productData) const override;
+    void writeFiles(QXmlStreamWriter &xmlWriter,
+                    const QSet<MsvsProjectConfiguration> &allConfigurations,
+                    const ProjectConfigurations &allProjectFilesConfigurations) const override;
+    void writeFooter(QXmlStreamWriter &xmlWriter) const override;
+};
+
 }
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
-
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QList<QSharedPointer<ProjectGenerator> > generators;
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
-
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
-
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
-
-} // namespace qbs
+#endif // QBS_MSBUILDPROJECTWRITER_H

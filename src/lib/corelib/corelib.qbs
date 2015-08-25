@@ -164,6 +164,26 @@ QbsLibrary {
         files: "buildgraph/forward_decls.h"
     }
     Group {
+        name: "Visual Studio generator"
+        prefix: "generators/visualstudio/"
+        files: [
+            "msbuildprojectwriter.cpp",
+            "msbuildprojectwriter.h",
+            "msvspreparedproject.cpp",
+            "msvspreparedproject.h",
+            "vcbuildprojectwriter.cpp",
+            "vcbuildprojectwriter.h",
+            "visualstudiogenerator.cpp",
+            "visualstudiogenerator.h",
+            "visualstudioitemgroupfilter.cpp",
+            "visualstudioitemgroupfilter.h",
+            "visualstudiosolutionwriter.cpp",
+            "visualstudiosolutionwriter.h",
+            "visualstudioxmlprojectwriter.cpp",
+            "visualstudioxmlprojectwriter.h"
+        ]
+    }
+    Group {
         name: "jsextensions"
         prefix: name + '/'
         files: [

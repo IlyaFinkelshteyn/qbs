@@ -29,53 +29,40 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#ifndef QBS_VISUALSTUDIOGENERATOR_H
+#define QBS_VISUALSTUDIOGENERATOR_H
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
+#include <generators/generator.h>
+#include "msvspreparedproject.h"
+#include "visualstudioxmlprojectwriter.h"
 
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "visualstudio/visualstudiogenerator.h"
+#include <QFileInfo>
+#include <QDir>
 
 namespace qbs {
 
-using namespace Internal;
+namespace Internal { class VisualStudioVersionInfo; }
 
-ProjectGeneratorManager::~ProjectGeneratorManager()
+class VisualStudioGenerator : public ProjectGenerator
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
-}
+public:
+    VisualStudioGenerator(const Internal::VisualStudioVersionInfo &versionInfo);
+    QString generatorName() const override;
+    void generate(const InstallOptions &installOptions) override;
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
+    static QList<QSharedPointer<ProjectGenerator> > createGeneratorList();
 
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QList<QSharedPointer<ProjectGenerator> > generators;
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
+private:
+    void setupGenerator();
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
-
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
+    Internal::VisualStudioVersionInfo m_versionInfo;
+    bool m_multipleProfiles = false;
+    QString m_projectName;
+    QFileInfo m_qbsProjectFile;
+    QDir m_baseBuildDirectory;
+    QFileInfo m_qbsExecutableFile;
+};
 
 } // namespace qbs
+
+#endif // QBS_VISUALSTUDIOGENERATOR_H
