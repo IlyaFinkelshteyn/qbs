@@ -36,6 +36,7 @@
 #include "item.h"
 #include "scriptengine.h"
 #include "propertydeclaration.h"
+#include <tools/applecodesignutils.h>
 #include <tools/architectures.h>
 #include <tools/fileinfo.h>
 #include <tools/hostosinfo.h>
@@ -45,6 +46,7 @@
 
 #include <QByteArray>
 #include <QCryptographicHash>
+#include <QDateTime>
 #include <QScriptString>
 #include <QScriptValue>
 #include <QDebug>
@@ -674,6 +676,73 @@ QScriptValue EvaluatorScriptClass::js_consoleLog(QScriptContext *context, QScrip
                                                    Logger *logger)
 {
     return js_consoleDebug(context, engine, logger);
+}
+
+/**
+ * Reads the contents of the S/MIME message located at \p filePath.
+ * An equivalent command line would be:
+ * \code security cms -D -i <infile> -o <outfile> \endcode
+ * or:
+ * \code openssl smime -verify -noverify -inform DER -in <infile> -out <outfile> \endcode
+ *
+ * \note A provisioning profile is an S/MIME message whose contents are an XML property list,
+ * so this method can be used to read such files.
+ */
+QScriptValue EvaluatorScriptClass::js_smimeMessageContent(QScriptContext *context,
+                                                          QScriptEngine *engine)
+{
+#ifndef Q_OS_OSX
+    Q_UNUSED(engine);
+    return context->throwError(QScriptContext::UnknownError,
+        QLatin1String("smimeMessageContent is not available on this platform"));
+#else
+    if (Q_UNLIKELY(context->argumentCount() != 1))
+        return context->throwError(QScriptContext::SyntaxError,
+                                   QLatin1String("smimeMessageContent expects 1 argument"));
+
+    const QString filePath = context->argument(0).toString();
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly))
+        return engine->undefinedValue();
+
+    QByteArray content = smimeMessageContent(file.readAll());
+    if (content.isEmpty())
+        return engine->undefinedValue();
+    return engine->toScriptValue(content);
+#endif
+}
+
+QScriptValue EvaluatorScriptClass::js_certificateCommonName(QScriptContext *context,
+                                                            QScriptEngine *engine)
+{
+#ifndef Q_OS_OSX
+    Q_UNUSED(engine);
+    return context->throwError(QScriptContext::UnknownError,
+        QLatin1String("certificateCommonName is not available on this platform"));
+#else
+    if (Q_UNLIKELY(context->argumentCount() != 1))
+        return context->throwError(QScriptContext::SyntaxError,
+                                   QLatin1String("certificateCommonName expects 1 argument"));
+
+    const QString cn = certificateCommonName(context->argument(0).toVariant().toByteArray());
+    if (cn.isEmpty())
+        return engine->undefinedValue();
+    return cn;
+#endif
+}
+
+// Rough command line equivalent: security find-identity -p codesigning -v
+QScriptValue EvaluatorScriptClass::js_signingIdentities(QScriptContext *context,
+                                                        QScriptEngine *engine)
+{
+#ifndef Q_OS_OSX
+    Q_UNUSED(engine);
+    return context->throwError(QScriptContext::UnknownError,
+        QLatin1String("signingIdentities is not available on this platform"));
+#else
+    Q_UNUSED(context);
+    return engine->toScriptValue(identitiesProperties());
+#endif
 }
 
 } // namespace Internal

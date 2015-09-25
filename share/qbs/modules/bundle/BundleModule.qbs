@@ -45,7 +45,9 @@ Module {
                                 || product.type.contains("dynamiclibrary")
                                 || product.type.contains("loadablemodule"))
                             && !product.consoleApplication
-    property bool isShallow: !qbs.targetOS.contains("osx") && product.type.contains("application")
+    property bool isShallow: !qbs.targetOS.contains("osx")
+                             && (product.type.contains("application")
+                                 || product.type.contains("dynamiclibrary"))
 
     property string identifierPrefix: "org.example"
     property string identifier: [identifierPrefix, qbs.rfc1034Identifier(product.targetName)].join(".")
@@ -138,12 +140,15 @@ Module {
     readonly property string sharedFrameworksFolderPath: FileInfo.joinPaths(contentsFolderPath, !isShallowContents ? "SharedFrameworks" : "")
     readonly property string sharedSupportFolderPath: packageType === "FMWK" ? unlocalizedResourcesFolderPath : FileInfo.joinPaths(contentsFolderPath, !isShallowContents ? "SharedSupport" : "")
     readonly property string unlocalizedResourcesFolderPath: isShallow ? contentsFolderPath : FileInfo.joinPaths(contentsFolderPath, !isShallowContents ? "Resources" : "")
+    readonly property string versionsFolderPath: isShallow ? bundleName : FileInfo.joinPaths(bundleName, "Versions")
 
     readonly property string contentsFolderPath: {
-        if (packageType === "FMWK")
-            return FileInfo.joinPaths(bundleName, "Versions", frameworkVersion);
-        else if (!isShallow)
-            return FileInfo.joinPaths(bundleName, "Contents");
+        if (!isShallow) {
+            if (packageType === "FMWK")
+                return FileInfo.joinPaths(versionsFolderPath, frameworkVersion);
+            else
+                return FileInfo.joinPaths(bundleName, "Contents");
+        }
         return bundleName;
     }
 
@@ -413,11 +418,13 @@ Module {
         condition: qbs.targetOS.contains("darwin")
         multiplex: true
         inputs: ["aggregate_infoplist", "pkginfo", "hpp",
-                 "icns", "resourcerules", "xcent",
+                 "icns", "resourcerules", "codesign.xcent",
                  "compiled_ibdoc", "compiled_assetcatalog",
-                 "xcode.provisioningprofile.main"]
+                 "codesign.embedded_provisioningprofile"]
 
-        outputFileTags: ["bundle",
+        //explicitlyDependsOn: ["application", "dynamiclibrary", "staticlibrary", "loadablemodule"]
+
+        outputFileTags: ["unsigned_bundle",
             "bundle.symlink.headers", "bundle.symlink.private-headers",
             "bundle.symlink.resources", "bundle.symlink.executable",
             "bundle.symlink.version", "bundle.hpp", "bundle.resource",
@@ -426,23 +433,29 @@ Module {
             var i, artifacts = [];
             if (ModUtils.moduleProperty(product, "isBundle")) {
                 artifacts.push({
-                    filePath: FileInfo.joinPaths(product.destinationDirectory, ModUtils.moduleProperty(product, "bundleName")),
-                    fileTags: ["bundle"]
+                    filePath: FileInfo.joinPaths(product.destinationDirectory, ".copy",
+                                                 ModUtils.moduleProperty(product, "bundleName")),
+                    fileTags: ["unsigned_bundle"],
+                    qbs: {
+                        _moduleData_filePath: FileInfo.joinPaths(product.destinationDirectory,
+                                                     ModUtils.moduleProperty(product, "bundleName"))
+                    }
                 });
 
-                for (i in inputs["xcode.provisioningprofile.main"]) {
-                    var ext = inputs["xcode.provisioningprofile.main"][i].fileName.split('.')[1];
+                var provprofiles = inputs["codesign.embedded_provisioningprofile"];
+                for (i in provprofiles) {
                     artifacts.push({
                         filePath: FileInfo.joinPaths(product.destinationDirectory,
                                                      ModUtils.moduleProperty(product,
                                                                              "contentsFolderPath"),
-                                                     "embedded." + ext),
+                                                     provprofiles[i].fileName),
                         fileTags: ["bundle.provisioningprofile"]
                     });
                 }
 
                 var packageType = ModUtils.moduleProperty(product, "packageType");
-                if (packageType === "FMWK") {
+                var isShallow = ModUtils.moduleProperty(product, "isShallow");
+                if (packageType === "FMWK" && !isShallow) {
                     var publicHeaders = ModUtils.moduleProperties(product, "publicHeaders");
                     if (publicHeaders && publicHeaders.length) {
                         artifacts.push({
@@ -470,7 +483,7 @@ Module {
                     });
 
                     artifacts.push({
-                        filePath: FileInfo.joinPaths(product.destinationDirectory, ModUtils.moduleProperty(product, "bundleName"), "Versions", "Current"),
+                        filePath: FileInfo.joinPaths(product.destinationDirectory, ModUtils.moduleProperty(product, "versionsFolderPath"), "Current"),
                         fileTags: ["bundle.symlink.version"]
                     });
                 }
@@ -509,14 +522,11 @@ Module {
             if (packageType === "FMWK")
                 bundleType = "framework";
 
-            var bundles = outputs.bundle;
+            var bundles = outputs["unsigned_bundle"];
             for (i in bundles) {
                 cmd = new Command("mkdir", ["-p", bundles[i].filePath]);
-                cmd.description = "creating " + bundleType + " " + product.targetName;
-                commands.push(cmd);
-
-                cmd = new Command("touch", ["-c", bundles[i].filePath]);
-                cmd.silent = true;
+                cmd.description = "creating " + bundleType + " " + bundles[i].fileName;
+                cmd.highlight = "linker";
                 commands.push(cmd);
             }
 
@@ -568,18 +578,19 @@ Module {
                 commands.push(cmd);
             }
 
-            var provisioningProfiles = outputs["bundle.provisioningprofile"];
-            for (i in provisioningProfiles) {
-                cmd = new JavaScriptCommand();
-                cmd.description = "copying provisioning profile";
-                cmd.highlight = "filegen";
-                cmd.source = inputs["xcode.provisioningprofile.main"][i].filePath;
-                cmd.destination = provisioningProfiles[i].filePath;
-                cmd.sourceCode = function() {
-                    File.copy(source, destination);
-                };
+            cmd = new JavaScriptCommand();
+            cmd.description = "copying provisioning profile";
+            cmd.highlight = "filegen";
+            cmd.sources = (inputs["codesign.embedded_provisioningprofile"] || []).map(function(artifact) { return artifact.filePath; });
+            cmd.destination = (outputs["bundle.provisioningprofile"] || []).map(function(artifact) { return artifact.filePath; });
+            cmd.sourceCode = function() {
+                var i;
+                for (var i in sources) {
+                    File.copy(sources[i], destination[i]);
+                }
+            };
+            if (cmd.sources && cmd.sources.length)
                 commands.push(cmd);
-            }
 
             cmd = new JavaScriptCommand();
             cmd.description = "copying public headers";
@@ -625,36 +636,6 @@ Module {
 
             if (product.moduleProperty("qbs", "hostOS").contains("darwin")) {
                 for (i in bundles) {
-                    var actualSigningIdentity = product.moduleProperty("xcode", "actualSigningIdentity");
-                    var codesignDisplayName = product.moduleProperty("xcode", "actualSigningIdentityDisplayName");
-                    if (actualSigningIdentity) {
-                        // If this is a framework, we need to sign its versioned directory
-                        var subpath = "";
-                        var frameworkVersion = ModUtils.moduleProperty(product, "frameworkVersion");
-                        if (frameworkVersion) {
-                            subpath = ModUtils.moduleProperty(product, "contentsFolderPath");
-                            subpath = subpath.substring(subpath.indexOf(ModUtils.moduleProperty("qbs", "pathSeparator")));
-                        }
-
-                        var args = product.moduleProperty("xcode", "codesignFlags") || [];
-                        args.push("--force");
-                        args.push("--sign", actualSigningIdentity);
-                        args = args.concat(DarwinTools._codeSignTimestampFlags(product));
-
-                        for (var j in inputs.xcent) {
-                            args.push("--entitlements", inputs.xcent[j].filePath);
-                            break; // there should only be one
-                        }
-                        args.push(bundles[i].filePath + subpath);
-
-                        cmd = new Command(product.moduleProperty("xcode", "codesignPath"), args);
-                        cmd.description = "codesign "
-                                + ModUtils.moduleProperty(product, "bundleName")
-                                + " using " + codesignDisplayName
-                                + " (" + actualSigningIdentity + ")";
-                        commands.push(cmd);
-                    }
-
                     if (product.type.contains("application")
                             && product.moduleProperty("qbs", "targetOS").contains("osx")) {
                         cmd = new Command(ModUtils.moduleProperty(product, "lsregisterPath"),

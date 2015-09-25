@@ -547,6 +547,15 @@ void ScriptEngine::installQbsBuiltins()
     installConsoleFunction(QLatin1String("warn"),
                            reinterpret_cast<FunctionWithArgSignature>(
                                EvaluatorScriptClass::js_consoleWarn));
+
+    // private API
+    m_qbsObject.setProperty(QLatin1String("internal"), m_qbsInternalObject = newObject());
+    installInternalFunction(QLatin1String("smimeMessageContent"),
+                            EvaluatorScriptClass::js_smimeMessageContent);
+    installInternalFunction(QLatin1String("certificateCommonName"),
+                            EvaluatorScriptClass::js_certificateCommonName);
+    installInternalFunction(QLatin1String("signingIdentities"),
+                            EvaluatorScriptClass::js_signingIdentities);
 }
 
 void ScriptEngine::extendJavaScriptBuiltins()
@@ -588,6 +597,12 @@ void ScriptEngine::installQbsFunction(const QString &name, FunctionSignature f)
 {
     QScriptValue functionValue;
     installFunction(name, &functionValue, f, &m_qbsObject);
+}
+
+void ScriptEngine::installInternalFunction(const QString &name, QScriptEngine::FunctionSignature f)
+{
+    QScriptValue functionValue;
+    installFunction(name, &functionValue, f, &m_qbsInternalObject);
 }
 
 void ScriptEngine::installConsoleFunction(const QString &name, FunctionWithArgSignature f)

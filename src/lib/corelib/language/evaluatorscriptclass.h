@@ -81,6 +81,11 @@ public:
     static QScriptValue js_consoleLog(QScriptContext *context, QScriptEngine *engine,
                                       Logger *logger);
 
+    // private API
+    static QScriptValue js_smimeMessageContent(QScriptContext *context, QScriptEngine *engine);
+    static QScriptValue js_certificateCommonName(QScriptContext *context, QScriptEngine *engine);
+    static QScriptValue js_signingIdentities(QScriptContext *context, QScriptEngine *engine);
+
 private:
     QueryFlags queryItemProperty(const EvaluationData *data,
                                  const QString &name,

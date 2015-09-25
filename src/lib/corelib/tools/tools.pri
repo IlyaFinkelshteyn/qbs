@@ -3,6 +3,7 @@ include(../../../install_prefix.pri)
 INCLUDEPATH += $$PWD/../.. # for plugins
 
 HEADERS += \
+    $$PWD/applecodesignutils.h \
     $$PWD/architectures.h \
     $$PWD/buildgraphlocker.h \
     $$PWD/codelocation.h \
@@ -74,6 +75,10 @@ SOURCES += \
     $$PWD/version.cpp \
     $$PWD/visualstudioversioninfo.cpp
 
+osx {
+    SOURCES += $$PWD/applecodesignutils.cpp
+}
+
 win32 {
     SOURCES += $$PWD/filetime_win.cpp
 }
@@ -89,6 +94,7 @@ qbs_enable_unit_tests {
 
 !qbs_no_dev_install {
     tools_headers.files = \
+        $$PWD/applecodesignutils.h \
         $$PWD/architectures.h \
         $$PWD/cleanoptions.h \
         $$PWD/codelocation.h \

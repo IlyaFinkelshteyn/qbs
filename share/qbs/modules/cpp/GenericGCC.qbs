@@ -41,6 +41,8 @@ import 'gcc.js' as Gcc
 CppModule {
     condition: false
 
+    //additionalProductTypes: ["debuginfo", "debuginfo_bundle", "debuginfo_plist"]
+
     cxxStandardLibrary: {
         if (cxxLanguageVersion && qbs.toolchain.contains("clang")) {
             return cxxLanguageVersion !== "c++98" ? "libc++" : "libstdc++";
@@ -150,12 +152,16 @@ CppModule {
         inputs: ["obj"]
         inputsFromDependencies: ["dynamiclibrary_copy", "staticlibrary"]
 
-        outputFileTags: ["dynamiclibrary", "dynamiclibrary_symlink", "dynamiclibrary_copy", "debuginfo"]
+        outputFileTags: ["unsigned_dynamiclibrary", "dynamiclibrary_symlink", "dynamiclibrary_copy"]
         outputArtifacts: {
             var lib = {
-                filePath: product.destinationDirectory + "/"
-                          + PathTools.dynamicLibraryFilePath(product),
-                fileTags: ["dynamiclibrary"]
+                filePath: FileInfo.joinPaths(product.destinationDirectory, ".copy",
+                                             PathTools.dynamicLibraryFilePath(product)),
+                fileTags: ["unsigned_dynamiclibrary"],
+                qbs: {
+                    _moduleData_filePath: FileInfo.joinPaths(product.destinationDirectory,
+                                                         PathTools.dynamicLibraryFilePath(product))
+                }
             };
             var libCopy = {
                 // Copy of libfoo for smart re-linking.
@@ -177,22 +183,6 @@ CppModule {
                     if (i > 0 && artifacts[i-1].filePath == symlink.filePath)
                         break; // Version number has less than three components.
                     artifacts.push(symlink);
-                }
-            }
-            if (ModUtils.moduleProperty(product, "separateDebugInformation")) {
-                artifacts.push({
-                    filePath: FileInfo.joinPaths(product.destinationDirectory, PathTools.debugInfoFilePath(product)),
-                    fileTags: ["debuginfo"]
-                });
-                if (PathTools.debugInfoIsBundle(product)) {
-                    artifacts.push({
-                        filePath: FileInfo.joinPaths(product.destinationDirectory, PathTools.debugInfoBundlePath(product)),
-                        fileTags: ["debuginfo_bundle"]
-                    });
-                    artifacts.push({
-                        filePath: FileInfo.joinPaths(product.destinationDirectory, PathTools.debugInfoPlistFilePath(product)),
-                        fileTags: ["debuginfo_plist"]
-                    });
                 }
             }
             return artifacts;
@@ -249,7 +239,7 @@ CppModule {
         multiplex: true
         inputs: {
             var tags = ["obj"];
-            if (product.type.contains("application") &&
+            if (product.type.contains("loadablemodule") &&
                 product.moduleProperty("qbs", "targetOS").contains("darwin") &&
                 product.moduleProperty("bundle", "embedInfoPlist"))
                 tags.push("aggregate_infoplist");
@@ -257,31 +247,14 @@ CppModule {
         }
         inputsFromDependencies: ["dynamiclibrary_copy", "staticlibrary"]
 
-        outputFileTags: ["loadablemodule", "debuginfo"]
-        outputArtifacts: {
-            var app = {
-                filePath: FileInfo.joinPaths(product.destinationDirectory,
-                                             PathTools.loadableModuleFilePath(product)),
-                fileTags: ["loadablemodule"]
+        Artifact {
+            filePath: FileInfo.joinPaths(product.destinationDirectory, ".copy",
+                                         PathTools.loadableModuleFilePath(product))
+            fileTags: ["unsigned_loadablemodule"]
+            qbs: {
+                _moduleData_filePath: FileInfo.joinPaths(product.destinationDirectory,
+                                                     PathTools.loadableModuleFilePath(product))
             }
-            var artifacts = [app];
-            if (ModUtils.moduleProperty(product, "separateDebugInformation")) {
-                artifacts.push({
-                    filePath: FileInfo.joinPaths(product.destinationDirectory, PathTools.debugInfoFilePath(product)),
-                    fileTags: ["debuginfo"]
-                });
-                if (PathTools.debugInfoIsBundle(product)) {
-                    artifacts.push({
-                        filePath: FileInfo.joinPaths(product.destinationDirectory, PathTools.debugInfoBundlePath(product)),
-                        fileTags: ["debuginfo_bundle"]
-                    });
-                    artifacts.push({
-                        filePath: FileInfo.joinPaths(product.destinationDirectory, PathTools.debugInfoPlistFilePath(product)),
-                        fileTags: ["debuginfo_plist"]
-                    });
-                }
-            }
-            return artifacts;
         }
 
         prepare: {
@@ -302,31 +275,14 @@ CppModule {
         }
         inputsFromDependencies: ["dynamiclibrary_copy", "staticlibrary"]
 
-        outputFileTags: ["application", "debuginfo"]
-        outputArtifacts: {
-            var app = {
-                filePath: FileInfo.joinPaths(product.destinationDirectory,
-                                             PathTools.applicationFilePath(product)),
-                fileTags: ["application"]
+        Artifact {
+            filePath: FileInfo.joinPaths(product.destinationDirectory, ".copy",
+                                         PathTools.applicationFilePath(product))
+            fileTags: ["unsigned_application"]
+            qbs: {
+                _moduleData_filePath: FileInfo.joinPaths(product.destinationDirectory,
+                                                         PathTools.applicationFilePath(product))
             }
-            var artifacts = [app];
-            if (ModUtils.moduleProperty(product, "separateDebugInformation")) {
-                artifacts.push({
-                    filePath: FileInfo.joinPaths(product.destinationDirectory, PathTools.debugInfoFilePath(product)),
-                    fileTags: ["debuginfo"]
-                });
-                if (PathTools.debugInfoIsBundle(product)) {
-                    artifacts.push({
-                        filePath: FileInfo.joinPaths(product.destinationDirectory, PathTools.debugInfoBundlePath(product)),
-                        fileTags: ["debuginfo_bundle"]
-                    });
-                    artifacts.push({
-                        filePath: FileInfo.joinPaths(product.destinationDirectory, PathTools.debugInfoPlistFilePath(product)),
-                        fileTags: ["debuginfo_plist"]
-                    });
-                }
-            }
-            return artifacts;
         }
 
         prepare: {
@@ -362,6 +318,34 @@ CppModule {
         prepare: {
             return Gcc.prepareAssembler.apply(this, arguments);
         }
+    }
+
+    Rule {
+        id: debugInfo
+        condition: product.moduleProperty("cpp", "separateDebugInformation")
+        inputs: ["unsigned_application", "unsigned_dynamiclibrary", "unsigned_loadablemodule"]
+
+        outputFileTags: ["debuginfo", "debuginfo_bundle", "debuginfo_plist"]
+        outputArtifacts: {
+            var artifacts = [];
+            artifacts.push({
+                filePath: FileInfo.joinPaths(product.destinationDirectory, PathTools.debugInfoFilePath(product)),
+                fileTags: ["debuginfo"]
+            });
+            if (PathTools.debugInfoIsBundle(product)) {
+                artifacts.push({
+                    filePath: FileInfo.joinPaths(product.destinationDirectory, PathTools.debugInfoBundlePath(product)),
+                    fileTags: ["debuginfo_bundle"]
+                });
+                artifacts.push({
+                    filePath: FileInfo.joinPaths(product.destinationDirectory, PathTools.debugInfoPlistFilePath(product)),
+                    fileTags: ["debuginfo_plist"]
+                });
+            }
+            return artifacts;
+        }
+
+        prepare: Gcc.prepareDebugSymbols.apply(this, arguments)
     }
 
     Transformer {
