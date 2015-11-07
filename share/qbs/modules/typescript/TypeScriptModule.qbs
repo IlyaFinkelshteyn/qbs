@@ -42,7 +42,7 @@ Module {
     additionalProductTypes: ["compiled_typescript"]
 
     // QBS-833 workaround
-    Probes.NodeJsProbe { id: nodejsProbe; pathPrefixes: [nodejsProbe.toolchainInstallPath] }
+    Probes.NodeJsProbe { id: nodejsProbe; pathPrefixes: [nodejs.toolchainInstallPath] }
     nodejs.toolchainInstallPath: nodejsProbe.path
     nodejs.interpreterFileName: nodejsProbe.fileName
     nodejs.interpreterFilePath: nodejsProbe.filePath
