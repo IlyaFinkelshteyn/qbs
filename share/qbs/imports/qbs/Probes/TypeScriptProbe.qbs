@@ -39,6 +39,14 @@ BinaryProbe {
     names: ["tsc"]
     canonicalPaths: true
 
+    platformPaths: {
+        if (qbs.hostOS.contains("windows"))
+            return FileInfo.joinPaths(qbs.getEnv("APPDATA"), "npm", "node_modules", "typescript");
+        return ["/usr", "/usr/local"];
+    }
+
+    pathSuffixes: ["bin"]
+
     // Inputs
     property path nodejsToolchainInstallPath
 
