@@ -63,6 +63,8 @@ BinaryProbe {
                 _paths = _paths.concat(value.split(qbs.pathListSeparator));
         }
         var _suffixes = ModUtils.concatAll('', pathSuffixes);
+        _paths = _paths.map(FileInfo.fromNativeSeparators);
+        _suffixes = _suffixes.map(FileInfo.fromNativeSeparators);
         for (i = 0; i < _names.length; ++i) {
             for (var j = 0; j < _paths.length; ++j) {
                 for (var k = 0; k < _suffixes.length; ++k) {
