@@ -36,12 +36,14 @@ import qbs.ModUtils
 Probe {
     // Inputs
     property stringList names
+    property stringList nameSuffixes
     property var nameFilter
     property pathList pathPrefixes
     property stringList pathSuffixes
     property pathList platformPaths: [ '/usr', '/usr/local' ]
     property pathList environmentPaths
     property pathList platformEnvironmentPaths
+    property bool canonicalPaths
 
     // Output
     property string path
@@ -54,6 +56,9 @@ Probe {
         var _names = ModUtils.concatAll(names);
         if (nameFilter)
             _names = _names.map(nameFilter);
+        _names = ModUtils.concatAll.apply(undefined, _names.map(function(name) {
+            return (nameSuffixes || [""]).map(function(suffix) { return name + suffix; });
+        }));
         // FIXME: Suggest how to obtain paths from system
         var _paths = ModUtils.concatAll(pathPrefixes, platformPaths);
         // FIXME: Add getenv support
@@ -72,9 +77,9 @@ Probe {
                     var _filePath = FileInfo.joinPaths(_paths[j], _suffixes[k], _names[i]);
                     if (File.exists(_filePath)) {
                         found = true;
-                        path = FileInfo.joinPaths(_paths[j], _suffixes[k]);
-                        filePath = _filePath;
-                        fileName = _names[i];
+                        filePath = canonicalPaths ? File.canonicalFilePath(_filePath) : _filePath;
+                        fileName = FileInfo.fileName(filePath);
+                        path = FileInfo.path(filePath);
                         return;
                     }
                 }

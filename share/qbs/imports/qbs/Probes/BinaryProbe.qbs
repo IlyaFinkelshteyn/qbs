@@ -31,6 +31,7 @@
 import qbs 1.0
 
 PathProbe {
+    nameSuffixes: qbs.hostOS.contains("windows") ? [".com", ".exe", ".bat", ".cmd"] : undefined
     platformPaths: undefined
     platformEnvironmentPaths: [ "PATH" ]
 }

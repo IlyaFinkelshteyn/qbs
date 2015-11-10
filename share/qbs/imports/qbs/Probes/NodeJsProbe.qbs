@@ -32,7 +32,7 @@ import qbs
 import qbs.FileInfo
 
 BinaryProbe {
-    names: ["nodejs", "node" + (qbs.hostOS.contains("windows") ? ".exe" : "")]
+    names: ["nodejs", "node"]
     platformPaths: {
         var paths = base;
         if (qbs.hostOS.contains("windows")) {

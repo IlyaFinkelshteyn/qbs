@@ -37,6 +37,7 @@ import "../../../modules/typescript/typescript.js" as TypeScript
 BinaryProbe {
     id: tsc
     names: ["tsc"]
+    canonicalPaths: true
 
     // Inputs
     property path nodejsToolchainInstallPath
@@ -53,6 +54,9 @@ BinaryProbe {
         var _names = ModUtils.concatAll(names);
         if (nameFilter)
             _names = _names.map(nameFilter);
+        _names = ModUtils.concatAll.apply(undefined, _names.map(function(name) {
+            return (nameSuffixes || [""]).map(function(suffix) { return name + suffix; });
+        }));
         // FIXME: Suggest how to obtain paths from system
         var _paths = ModUtils.concatAll(pathPrefixes, platformPaths);
         // FIXME: Add getenv support
@@ -71,7 +75,7 @@ BinaryProbe {
                     var _filePath = FileInfo.joinPaths(_paths[j], _suffixes[k], _names[i]);
                     if (File.exists(_filePath)) {
                         found = true;
-                        filePath = File.canonicalFilePath(_filePath);
+                        filePath = canonicalPaths ? File.canonicalFilePath(_filePath) : _filePath;
                         fileName = FileInfo.fileName(filePath);
                         path = FileInfo.path(filePath);
                         version = TypeScript.findTscVersion(filePath, nodejsToolchainInstallPath);
