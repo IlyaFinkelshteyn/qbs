@@ -36,13 +36,25 @@ Product {
     }
 
     property bool isForAndroid: qbs.targetOS.contains("android")
-    property stringList architectures: isForAndroid ? ["armv5"] : undefined
 
     Depends { name: "Android.ndk"; condition: isForAndroid }
     Depends { name: "bundle" }
-    Depends { name: "cpp"; condition: isForAndroid }
+    Depends { name: "cpp" }
 
-    profiles: isForAndroid
-        ? architectures.map(function(arch) { return project.profile + '-' + arch; })
+    // Top-level instance depends on all architecture-specific instances
+    property stringList architectures: qbs.architectures
+    property stringList architectureProfiles: (architectures || []).map(function(arch) { return project.profile + '-' + arch; })
+    property bool hasAggregateProfile: qbs.targetOS.contains("darwin")
+    Depends {
+        id: aggregateProfileDependency
+        name: product.name
+        condition: profile === project.profile && hasAggregateProfile
+        profiles: architectureProfiles
+    }
+
+    // If we're building for more than one architecture, multiplex, or if we use a top-level profile
+    // in which case we always need to multiplex, even for more than one architecture
+    profiles: architectures.length > 1 || hasAggregateProfile
+        ? (hasAggregateProfile ? [project.profile] : []).concat(architectureProfiles)
         : [project.profile]
 }

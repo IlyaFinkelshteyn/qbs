@@ -711,22 +711,7 @@ function prepareLinker(project, product, inputs, outputs, input, output) {
     commands.push(cmd);
 
     if (outputs.debuginfo) {
-        if (product.moduleProperty("qbs", "targetOS").contains("darwin")) {
-            var dsymPath = outputs.debuginfo[0].filePath;
-            if (outputs.debuginfo_bundle && outputs.debuginfo_bundle[0])
-                dsymPath = outputs.debuginfo_bundle[0].filePath;
-            var flags = ModUtils.moduleProperty(product, "dsymutilFlags") || [];
-            cmd = new Command(ModUtils.moduleProperty(product, "dsymutilPath"), flags.concat([
-                "-o", dsymPath, primaryOutput.filePath
-            ]));
-            cmd.description = "generating dSYM for " + product.name;
-            commands.push(cmd);
-
-            cmd = new Command(ModUtils.moduleProperty(product, "stripPath"),
-                              ["-S", primaryOutput.filePath]);
-            cmd.silent = true;
-            commands.push(cmd);
-        } else {
+        if (!product.moduleProperty("qbs", "targetOS").contains("darwin")) {
             var objcopy = ModUtils.moduleProperty(product, "objcopyPath");
 
             cmd = new Command(objcopy, ["--only-keep-debug", primaryOutput.filePath,

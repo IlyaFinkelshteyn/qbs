@@ -171,6 +171,7 @@ CppModule {
 
     Rule {
         id: dynamicLibraryLinker
+        condition: architecture !== undefined
         multiplex: true
         inputs: {
             var tags = ["obj", "linkerscript", "versionscript"];
@@ -212,7 +213,9 @@ CppModule {
                     artifacts.push(symlink);
                 }
             }
-            return artifacts.concat(Gcc.debugInfoArtifacts(product));
+            if (!product.moduleProperty("qbs", "targetOS").contains("darwin"))
+                artifacts = artifacts.concat(Gcc.debugInfoArtifacts(product));
+            return artifacts;
         }
 
         prepare: {
@@ -222,6 +225,7 @@ CppModule {
 
     Rule {
         id: staticLibraryLinker
+        condition: architecture !== undefined
         multiplex: true
         inputs: ["obj", "linkerscript"]
         inputsFromDependencies: ["dynamiclibrary", "staticlibrary"]
@@ -263,6 +267,7 @@ CppModule {
 
     Rule {
         id: loadableModuleLinker
+        condition: architecture !== undefined
         multiplex: true
         inputs: {
             var tags = ["obj", "linkerscript"];
@@ -281,7 +286,10 @@ CppModule {
                                              PathTools.loadableModuleFilePath(product)),
                 fileTags: ["loadablemodule"]
             }
-            return [app].concat(Gcc.debugInfoArtifacts(product));
+            var artifacts = [app];
+            if (!product.moduleProperty("qbs", "targetOS").contains("darwin"))
+                artifacts = artifacts.concat(Gcc.debugInfoArtifacts(product));
+            return artifacts;
         }
 
         prepare: {
@@ -291,6 +299,7 @@ CppModule {
 
     Rule {
         id: applicationLinker
+        condition: architecture !== undefined
         multiplex: true
         inputs: {
             var tags = ["obj", "linkerscript"];
@@ -309,7 +318,10 @@ CppModule {
                                              PathTools.applicationFilePath(product)),
                 fileTags: ["application"]
             }
-            return [app].concat(Gcc.debugInfoArtifacts(product));
+            var artifacts = [app];
+            if (!product.moduleProperty("qbs", "targetOS").contains("darwin"))
+                artifacts = artifacts.concat(Gcc.debugInfoArtifacts(product));
+            return artifacts;
         }
 
         prepare: {
@@ -319,6 +331,7 @@ CppModule {
 
     Rule {
         id: compiler
+        condition: architecture !== undefined
         inputs: ["cpp", "c", "objcpp", "objc", "asm_cpp"]
         auxiliaryInputs: ["hpp"]
         explicitlyDependsOn: ["c_pch", "cpp_pch", "objc_pch", "objcpp_pch"]
@@ -335,6 +348,7 @@ CppModule {
 
     Rule {
         id: assembler
+        condition: architecture !== undefined
         inputs: ["asm"]
 
         Artifact {
@@ -348,6 +362,7 @@ CppModule {
     }
 
     Rule {
+        condition: architecture !== undefined
         inputs: ["c_pch_src"]
         explicitlyDependsOn: ["hpp"]
         Artifact {
@@ -360,6 +375,7 @@ CppModule {
     }
 
     Rule {
+        condition: architecture !== undefined
         inputs: ["cpp_pch_src"]
         explicitlyDependsOn: ["hpp"]
         Artifact {
@@ -372,6 +388,7 @@ CppModule {
     }
 
     Rule {
+        condition: architecture !== undefined
         inputs: ["objc_pch_src"]
         explicitlyDependsOn: ["hpp"]
         Artifact {
@@ -384,6 +401,7 @@ CppModule {
     }
 
     Rule {
+        condition: architecture !== undefined
         inputs: ["objcpp_pch_src"]
         explicitlyDependsOn: ["hpp"]
         Artifact {
@@ -397,7 +415,7 @@ CppModule {
 
     // TODO: Remove in 1.6
     Transformer {
-        condition: cPrecompiledHeader !== undefined
+        condition: cPrecompiledHeader !== undefined && architecture !== undefined
         inputs: cPrecompiledHeader
         Artifact {
             filePath: product.name + "_c.gch"
@@ -409,7 +427,7 @@ CppModule {
     }
 
     Transformer {
-        condition: cxxPrecompiledHeader !== undefined
+        condition: cxxPrecompiledHeader !== undefined && architecture !== undefined
         inputs: cxxPrecompiledHeader
         Artifact {
             filePath: product.name + "_cpp.gch"
@@ -421,7 +439,7 @@ CppModule {
     }
 
     Transformer {
-        condition: objcPrecompiledHeader !== undefined
+        condition: objcPrecompiledHeader !== undefined && architecture !== undefined
         inputs: objcPrecompiledHeader
         Artifact {
             filePath: product.name + "_objc.gch"
@@ -433,7 +451,7 @@ CppModule {
     }
 
     Transformer {
-        condition: objcxxPrecompiledHeader !== undefined
+        condition: objcxxPrecompiledHeader !== undefined && architecture !== undefined
         inputs: objcxxPrecompiledHeader
         Artifact {
             filePath: product.name + "_objcpp.gch"

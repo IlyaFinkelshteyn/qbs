@@ -2570,6 +2570,12 @@ void TestBlackbox::mixedBuildVariants()
     }
 }
 
+void TestBlackbox::multipleArchitectures()
+{
+    QDir::setCurrent(testDataDir + "/apple-multiarch");
+    QCOMPARE(runQbs(), 0);
+}
+
 void TestBlackbox::multipleChanges()
 {
     QDir::setCurrent(testDataDir + "/multiple-changes");

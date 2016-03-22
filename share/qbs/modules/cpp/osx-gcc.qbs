@@ -41,4 +41,6 @@ DarwinGCC {
     minimumDarwinVersion: minimumOsxVersion
     minimumDarwinVersionCompilerFlag: "-mmacosx-version-min"
     minimumDarwinVersionLinkerFlag: "-macosx_version_min"
+
+    architectures: ["x86_64"]
 }

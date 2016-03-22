@@ -45,4 +45,6 @@ DarwinGCC {
     minimumDarwinVersionLinkerFlag: qbs.targetOS.contains("watchos-simulator")
                                     ? "-watchos_simulator_version_min"
                                     : "-watchos_version_min"
+
+    architectures: ["armv7k"]
 }

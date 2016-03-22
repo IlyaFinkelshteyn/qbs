@@ -44,4 +44,6 @@ DarwinGCC {
     minimumDarwinVersionLinkerFlag: qbs.targetOS.contains("tvos-simulator")
                                     ? "-tvos_simulator_version_min"
                                     : "-tvos_version_min"
+
+    architectures: ["arm64"]
 }

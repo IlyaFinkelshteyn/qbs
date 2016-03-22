@@ -73,6 +73,7 @@ Module {
     property string profile
     property stringList toolchain
     property string architecture
+    property stringList architectures: architecture ? [architecture] : []
     property bool install: false
     property path installSourceBase
     readonly property string installRoot: undefined

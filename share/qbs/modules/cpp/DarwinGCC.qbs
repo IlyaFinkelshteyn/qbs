@@ -32,6 +32,9 @@ import qbs
 import qbs.DarwinTools
 import qbs.FileInfo
 import qbs.ModUtils
+import qbs.PathTools
+import "darwin.js" as Darwin
+import "gcc.js" as Gcc
 
 UnixGCC {
     condition: false
@@ -143,4 +146,75 @@ UnixGCC {
     property string minimumDarwinVersion
     property string minimumDarwinVersionCompilerFlag
     property string minimumDarwinVersionLinkerFlag
+
+    property string lipoName: "lipo"
+    property string lipoPath: toolchainPathPrefix + lipoName
+
+    Rule {
+        condition: architecture === undefined
+        inputsFromDependencies: ["application"]
+        multiplex: true
+
+        outputFileTags: ["application", "primary", "debuginfo"]
+        outputArtifacts: {
+            var primary = {
+                filePath: FileInfo.joinPaths(product.destinationDirectory,
+                                             PathTools.applicationFilePath(product)),
+                fileTags: ["application", "primary"]
+            };
+            return [primary].concat(Gcc.debugInfoArtifacts(product));
+        }
+
+        prepare: Darwin.prepareLipo.apply(this, arguments)
+    }
+
+    Rule {
+        condition: architecture === undefined
+        inputsFromDependencies: ["loadablemodule"]
+        multiplex: true
+
+        outputFileTags: ["loadablemodule", "primary", "debuginfo"]
+        outputArtifacts: {
+            var primary = {
+                filePath: FileInfo.joinPaths(product.destinationDirectory,
+                                             PathTools.loadableModuleFilePath(product)),
+                fileTags: ["loadablemodule", "primary"]
+            };
+            return [primary].concat(Gcc.debugInfoArtifacts(product));
+        }
+
+        prepare: Darwin.prepareLipo.apply(this, arguments)
+    }
+
+    Rule {
+        condition: architecture === undefined
+        inputsFromDependencies: ["dynamiclibrary"]
+        multiplex: true
+
+        outputFileTags: ["dynamiclibrary", "primary", "debuginfo"]
+        outputArtifacts: {
+            var primary = {
+                filePath: FileInfo.joinPaths(product.destinationDirectory,
+                                             PathTools.dynamicLibraryFilePath(product)),
+                fileTags: ["dynamiclibrary", "primary"]
+            };
+            return [primary].concat(Gcc.debugInfoArtifacts(product));
+        }
+
+        prepare: Darwin.prepareLipo.apply(this, arguments)
+    }
+
+    Rule {
+        condition: architecture === undefined
+        inputsFromDependencies: ["staticlibrary"]
+        multiplex: true
+
+        Artifact {
+            filePath: FileInfo.joinPaths(product.destinationDirectory,
+                                         PathTools.staticLibraryFilePath(product))
+            fileTags: ["staticlibrary", "primary"]
+        }
+
+        prepare: Darwin.prepareLipo.apply(this, arguments)
+    }
 }

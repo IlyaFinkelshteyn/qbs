@@ -155,6 +155,7 @@ private slots:
     void lrelease();
     void missingProfile();
     void mixedBuildVariants();
+    void multipleArchitectures();
     void multipleChanges();
     void nestedProperties();
     void nodejs();

@@ -265,7 +265,7 @@ Module {
     Group { name: "Info.plist"; files: bundle.infoPlistFile ? [bundle.infoPlistFile] : [] }
 
     Rule {
-        condition: qbs.targetOS.contains("darwin")
+        condition: qbs.targetOS.contains("darwin") && qbs.architecture === undefined
         multiplex: true
         inputs: ["qbs", "infoplist", "partial_infoplist"]
 
@@ -448,7 +448,7 @@ Module {
     }
 
     Rule {
-        condition: qbs.targetOS.contains("darwin")
+        condition: qbs.targetOS.contains("darwin") && qbs.architecture === undefined
         multiplex: true
         inputs: ["aggregate_infoplist"]
 
@@ -488,7 +488,7 @@ Module {
     }
 
     Rule {
-        condition: qbs.targetOS.contains("darwin")
+        condition: qbs.targetOS.contains("darwin") && qbs.architecture === undefined
         multiplex: true
         inputs: ["aggregate_infoplist", "pkginfo", "hpp",
                  "icns", "resourcerules", "xcent",

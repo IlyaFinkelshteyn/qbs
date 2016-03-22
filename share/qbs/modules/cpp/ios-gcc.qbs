@@ -49,6 +49,8 @@ DarwinGCC {
                                     ? "-ios_simulator_version_min"
                                     : "-iphoneos_version_min"
 
+    architectures: ["armv7", "arm64"]
+
     platformObjcFlags: base.concat(simulatorObjcFlags)
     platformObjcxxFlags: base.concat(simulatorObjcFlags)
 
