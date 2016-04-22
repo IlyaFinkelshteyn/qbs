@@ -53,6 +53,7 @@ CppModule {
         id: gccProbe
         compilerFilePath: compilerPath
         preferredArchitecture: targetArch
+        preferredEndianness: endianness
         preferredMachineType: machineType
     }
 

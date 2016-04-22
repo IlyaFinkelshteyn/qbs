@@ -89,6 +89,7 @@ CppModule {
     property bool generateManifestFile: true
     property path toolchainInstallPath
     architecture: qbs.architecture
+    endianness: "little"
     staticLibraryPrefix: ""
     dynamicLibraryPrefix: ""
     executablePrefix: ""

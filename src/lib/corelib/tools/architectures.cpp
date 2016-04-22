@@ -72,10 +72,17 @@ QString canonicalArchitecture(const QString &architecture)
         << QLatin1String("powerpc"));
 
     archMap.insert(QLatin1String("ppc64"), QStringList()
-        << QLatin1String("powerpc64"));
-
-    archMap.insert(QLatin1String("ppc64le"), QStringList()
+        << QLatin1String("ppc64le")
+        << QLatin1String("powerpc64")
         << QLatin1String("powerpc64le"));
+
+    archMap.insert(QLatin1String("mips"), QStringList()
+        << QLatin1String("mipseb")
+        << QLatin1String("mipsel"));
+
+    archMap.insert(QLatin1String("mips64"), QStringList()
+        << QLatin1String("mips64eb")
+        << QLatin1String("mips64el"));
 
     QMapIterator<QString, QStringList> i(archMap);
     while (i.hasNext()) {

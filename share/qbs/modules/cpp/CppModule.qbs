@@ -43,6 +43,7 @@ Module {
     property string warningLevel : 'all' // 'none', 'all'
     property bool treatWarningsAsErrors : false
     property string architecture: qbs.architecture
+    property string endianness
     property string machineType // undocumented
     property string imageFormat // undocumented
     property string optimization: qbs.optimization

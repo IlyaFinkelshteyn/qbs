@@ -36,6 +36,7 @@ PathProbe {
     // Inputs
     property string compilerFilePath
     property string preferredArchitecture
+    property string preferredEndianness
     property string preferredMachineType
     property stringList flags: []
 
@@ -48,6 +49,7 @@ PathProbe {
 
     // Outputs
     property string architecture
+    property string endianness
     property int versionMajor
     property int versionMinor
     property int versionPatch
@@ -57,6 +59,8 @@ PathProbe {
 
     configure: {
         var args = flags;
+
+        // TODO: use -target and append el or eb if arch in [mips, mips64, ppc64] based on endian
         if (_haveArchFlag) {
             if (preferredArchitecture)
                 args.push("-arch", preferredArchitecture);
@@ -82,6 +86,15 @@ PathProbe {
         // We have to dump the compiler's macros; -dumpmachine is not suitable because it is not
         // always complete (for example, the subarch is not included for arm architectures).
         architecture = ModUtils.guessArchitecture(macros) || preferredArchitecture;
+
+        switch (macros["__BYTE_ORDER__"]) {
+            case "__ORDER_BIG_ENDIAN__":
+                endianness = "big";
+                break;
+            case "__ORDER_LITTLE_ENDIAN__":
+                endianness = "little";
+                break;
+        }
 
         if (_toolchain.contains("clang")) {
             versionMajor = macros["__clang_major__"];
