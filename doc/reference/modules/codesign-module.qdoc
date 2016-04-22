@@ -1,0 +1,157 @@
+/****************************************************************************
+**
+** Copyright (C) 2016 The Qt Company Ltd.
+** Contact: http://www.qt.io/licensing
+**
+** This file is part of the Qt Build Suite.
+**
+** Commercial License Usage
+** Licensees holding valid commercial Qt licenses may use this file in
+** accordance with the commercial license agreement provided with the
+** Software or, alternatively, in accordance with the terms contained in
+** a written agreement between you and The Qt Company.  For licensing terms and
+** conditions see http://www.qt.io/terms-conditions.  For further information
+** use the contact form at http://www.qt.io/contact-us.
+**
+** GNU Lesser General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU Lesser
+** General Public License version 2.1 or version 3 as published by the Free
+** Software Foundation and appearing in the file LICENSE.LGPLv21 and
+** LICENSE.LGPLv3 included in the packaging of this file.  Please review the
+** following information to ensure the GNU Lesser General Public License
+** requirements will be met: https://www.gnu.org/licenses/lgpl.html and
+** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+**
+** In addition, as a special exception, The Qt Company gives you certain additional
+** rights.  These rights are described in The Qt Company LGPL Exception
+** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
+**
+****************************************************************************/
+
+/*!
+    \contentspage index.html
+    \page codesign-module.html
+    \ingroup list-of-modules
+
+    \title Module codesign
+    \since 1.6
+    \brief Provides code signing support.
+
+    The \c codesign module contains properties and rules for code signing on various platforms.
+
+    \section1 General Properties
+
+    \table
+    \header
+        \li Property
+        \li Type
+        \li Since
+        \li Default
+        \li Description
+    \row
+        \li enableCodeSigning
+        \li bool
+        \li 1.6
+        \li determined automatically
+        \li Whether to actually perform code signing. This is enabled by default if the platform
+            requires it (for example, iOS), and should generally be set in a profile or on the
+            command line.
+    \endtable
+
+    \section1 Properties Specific to Apple Platforms
+
+    \table
+    \header
+        \li Property
+        \li Type
+        \li Since
+        \li Default
+        \li Description
+    \row
+        \li signingType
+        \li string
+        \li 1.6
+        \li determined automatically
+        \li Type of code signing to use. This should generally be used in preference to an explicit
+            signing identity like "Mac Developer: John Doe (XXXXXXXXXX)" since it is not user
+            specific and can be set in a project file.
+            Possible values include: \c{"app-store"}, \c{"apple-id"}, \c{"ad-hoc"}, which sign for
+            the App Store or Mac App Store, Developer ID, and Ad-hoc code signing, respectively.
+    \row
+        \li signingIdentity
+        \li string
+        \li 1.6
+        \li determined by \c{codesign.signingType}
+        \li Search string used to find the certificate to sign the product. This does not have to be
+            a full certificate name like "Mac Developer: John Doe (XXXXXXXXXX)", and can instead be
+            a partial string like "Mac Developer" or the certificate's SHA1 fingerprint.
+            The search string should generally be one of the following:
+            \list
+                \li 3rd Party Mac Developer Application
+                \li 3rd Party Mac Developer Installer
+                \li Developer ID Application
+                \li Developer ID Installer
+                \li iPhone Developer
+                \li iPhone Distribution
+                \li Mac Developer
+            \endlist
+            See \l{https://developer.apple.com/library/mac/documentation/IDEs/Conceptual/AppDistributionGuide/MaintainingCertificates/MaintainingCertificates.html#//apple_ref/doc/uid/TP40012582-CH31-SW41}{Maintaining Your Signing Identities and Certificates}
+            for complete documentation on the existing certificate types.
+            In general you should use \c{codesign.signingType} instead.
+    \row
+        \li teamIdentifier
+        \li string
+        \li 1.6
+        \li \c undefined
+        \li Human readable name or 10-digit identifier of the Apple development team that the
+            signing identity belongs to. This is used to disambiguate between multiple certificates
+            of the same type in different teams. Typically this can be left blank if the development
+            machine is only signed in to a single development team, and should be set in a profile
+            otherwise.
+    \endtable
+
+    \section1 Advanced Properties
+
+    \table
+    \header
+        \li Property
+        \li Type
+        \li Since
+        \li Default
+        \li Description
+    \row
+        \li provisioningProfile
+        \li string
+        \li 1.6
+        \li \c undefined
+        \li Name or UUID of the provisioning profile to embed in the product.
+            Typically this should be left blank to allow \QBS to use automatic provisioning.
+    \row
+        \li provisioningProfilesPath
+        \li path
+        \li 1.6
+        \li \c{"~/Library/MobileDevice/Provisioning Profiles"}
+        \li Path to directory containing provisioning profiles installed on the system.
+            This should not normally need to be changed.
+    \row
+        \li signingTimestamp
+        \li string
+        \li 1.6
+        \li \c{"none"}
+        \li URL of the timestamp authority server to be contacted to authenticate code signing.
+            \c{undefined} indicates that a system-specific default should be used, and the empty
+            string indicates the default server provided by Apple. \c{"none"} explicitly disables
+            the use of timestamp services and this should not usually need to be changed.
+    \endtable
+
+    \section1 Read-only Properties
+
+    \table
+    \header
+        \li Property
+        \li Type
+        \li Since
+        \li Default
+        \li Description
+    \endtable
+*/

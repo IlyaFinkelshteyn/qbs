@@ -30,8 +30,17 @@
 
 var File = loadExtension("qbs.File");
 var FileInfo = loadExtension("qbs.FileInfo");
-var Process = loadExtension("qbs.Process");
 var PropertyList = loadExtension("qbs.PropertyList");
+
+function platformInfo(platformInfoPlist) {
+    var propertyList = new PropertyList();
+    try {
+        propertyList.readFromFile(platformInfoPlist);
+        return propertyList.toObject();
+    } finally {
+        propertyList.clear();
+    }
+}
 
 function sdkInfoList(sdksPath) {
     var sdkInfo = [];
@@ -86,46 +95,13 @@ function sdkInfoList(sdksPath) {
     return sdkInfo;
 }
 
-function findSigningIdentities(security, searchString) {
-    var process;
-    var identities;
-    if (searchString) {
-        try {
-            process = new Process();
-            if (process.exec(security, ["find-identity", "-p", "codesigning", "-v"], true) !== 0)
-                console.error(process.readStdErr());
-
-            var lines = process.readStdOut().split("\n");
-            for (var i in lines) {
-                // e.g. 1) AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA "Mac Developer: John Doe (XXXXXXXXXX) john.doe@example.org"
-                var match = lines[i].match(/^\s*[0-9]+\)\s+([A-Fa-f0-9]{40})\s+"([^"]+)"$/);
-                if (match !== null) {
-                    var hexId = match[1];
-                    var displayName = match[2];
-                    if (hexId === searchString || displayName.startsWith(searchString)) {
-                        if (!identities)
-                            identities = [];
-                        identities.push([hexId, displayName]);
-                        break;
-                    }
-                }
-            }
-        } finally {
-            process.close();
-        }
+function boolFromSdkOrPlatform(varName, sdkProps, platformProps, defaultValue) {
+    var values = [(sdkProps || {})[varName], (platformProps || {})[varName]];
+    for (var i = 0; i < values.length; ++i) {
+        if (values[i] === "YES")
+            return true;
+        if (values[i] === "NO")
+            return false;
     }
-    return identities;
-}
-
-function provisioningProfilePlistContents(filePath) {
-    if (filePath === undefined)
-        return undefined;
-
-    var plist = new PropertyList();
-    try {
-        plist.readFromFile(filePath);
-        return plist.toObject();
-    } finally {
-        plist.clear();
-    }
+    return defaultValue;
 }

@@ -77,7 +77,7 @@ function linkerFlags(product, inputs, output) {
     var isDarwin = product.moduleProperty("qbs", "targetOS").contains("darwin");
     var i, args = additionalCompilerAndLinkerFlags(product);
 
-    if (output.fileTags.contains("dynamiclibrary")) {
+    if (output.fileTags.contains("unsigned_dynamiclibrary")) {
         args.push(isDarwin ? "-dynamiclib" : "-shared");
 
         if (isDarwin) {
@@ -95,10 +95,10 @@ function linkerFlags(product, inputs, output) {
         }
     }
 
-    if (output.fileTags.contains("loadablemodule"))
+    if (output.fileTags.contains("unsigned_loadablemodule"))
         args.push(isDarwin ? "-bundle" : "-shared");
 
-    if (output.fileTags.containsAny(["dynamiclibrary", "loadablemodule"])) {
+    if (output.fileTags.containsAny(["unsigned_dynamiclibrary", "unsigned_loadablemodule"])) {
         if (isDarwin)
             args = args.concat(escapeLinkerFlags(product, ["-headerpad_max_install_names"]));
         else
@@ -687,12 +687,12 @@ function collectTransitiveSos(inputs)
 function prepareLinker(project, product, inputs, outputs, input, output) {
     var i, primaryOutput, cmd, commands = [];
 
-    if (outputs.application) {
-        primaryOutput = outputs.application[0];
-    } else if (outputs.dynamiclibrary) {
-        primaryOutput = outputs.dynamiclibrary[0];
-    } else if (outputs.loadablemodule) {
-        primaryOutput = outputs.loadablemodule[0];
+    if (outputs.unsigned_application) {
+        primaryOutput = outputs.unsigned_application[0];
+    } else if (outputs.unsigned_dynamiclibrary) {
+        primaryOutput = outputs.unsigned_dynamiclibrary[0];
+    } else if (outputs.unsigned_loadablemodule) {
+        primaryOutput = outputs.unsigned_loadablemodule[0];
     }
 
     cmd = new Command(ModUtils.moduleProperty(product, "linkerPath"),
@@ -702,47 +702,12 @@ function prepareLinker(project, product, inputs, outputs, input, output) {
     cmd.responseFileUsagePrefix = '@';
     commands.push(cmd);
 
-    if (outputs.debuginfo) {
-        if (product.moduleProperty("qbs", "targetOS").contains("darwin")) {
-            var dsymPath = outputs.debuginfo[0].filePath;
-            if (outputs.debuginfo_bundle && outputs.debuginfo_bundle[0])
-                dsymPath = outputs.debuginfo_bundle[0].filePath;
-            var flags = ModUtils.moduleProperty(product, "dsymutilFlags") || [];
-            cmd = new Command(ModUtils.moduleProperty(product, "dsymutilPath"), flags.concat([
-                "-o", dsymPath, primaryOutput.filePath
-            ]));
-            cmd.description = "generating dSYM for " + product.name;
-            commands.push(cmd);
-
-            cmd = new Command(ModUtils.moduleProperty(product, "stripPath"),
-                              ["-S", primaryOutput.filePath]);
-            cmd.silent = true;
-            commands.push(cmd);
-        } else {
-            var objcopy = ModUtils.moduleProperty(product, "objcopyPath");
-
-            cmd = new Command(objcopy, ["--only-keep-debug", primaryOutput.filePath,
-                                        outputs.debuginfo[0].filePath]);
-            cmd.silent = true;
-            commands.push(cmd);
-
-            cmd = new Command(objcopy, ["--strip-debug", primaryOutput.filePath]);
-            cmd.silent = true;
-            commands.push(cmd);
-
-            cmd = new Command(objcopy, ["--add-gnu-debuglink=" + outputs.debuginfo[0].filePath,
-                                        primaryOutput.filePath]);
-            cmd.silent = true;
-            commands.push(cmd);
-        }
-    }
-
-    if (outputs.dynamiclibrary) {
+    if (outputs.unsigned_dynamiclibrary) {
         // Update the copy, if any global symbols have changed.
         cmd = new JavaScriptCommand();
         cmd.silent = true;
         cmd.sourceCode = function() {
-            var sourceFilePath = outputs.dynamiclibrary[0].filePath;
+            var sourceFilePath = outputs.unsigned_dynamiclibrary[0].filePath;
             var targetFilePath = outputs.dynamiclibrary_copy[0].filePath;
             if (!File.exists(targetFilePath)) {
                 File.copy(sourceFilePath, targetFilePath);
@@ -834,24 +799,43 @@ function prepareLinker(project, product, inputs, outputs, input, output) {
         }
     }
 
-    var actualSigningIdentity = product.moduleProperty("xcode", "actualSigningIdentity");
-    var codesignDisplayName = product.moduleProperty("xcode", "actualSigningIdentityDisplayName");
-    if (actualSigningIdentity && !product.moduleProperty("bundle", "isBundle")) {
-        var args = product.moduleProperty("xcode", "codesignFlags") || [];
-        args.push("--force");
-        args.push("--sign", actualSigningIdentity);
-        args = args.concat(DarwinTools._codeSignTimestampFlags(product));
+    return commands;
+}
 
-        for (var j in inputs.xcent) {
-            args.push("--entitlements", inputs.xcent[j].filePath);
-            break; // there should only be one
-        }
-        args.push(primaryOutput.filePath);
-        cmd = new Command(product.moduleProperty("xcode", "codesignPath"), args);
-        cmd.description = "codesign "
-                + primaryOutput.fileName
-                + " using " + codesignDisplayName
-                + " (" + actualSigningIdentity + ")";
+function prepareDebugSymbols(project, product, inputs, outputs, input, output) {
+    var cmd, commands = [];
+    var primaryOutput = input;
+
+    if (product.moduleProperty("qbs", "targetOS").contains("darwin")) {
+        var dsymPath = outputs.debuginfo[0].filePath;
+        if (outputs.debuginfo_bundle && outputs.debuginfo_bundle[0])
+            dsymPath = outputs.debuginfo_bundle[0].filePath;
+        var flags = ModUtils.moduleProperty(product, "dsymutilFlags") || [];
+        cmd = new Command(ModUtils.moduleProperty(product, "dsymutilPath"), flags.concat([
+            "-o", dsymPath, primaryOutput.filePath
+        ]));
+        cmd.description = "generating dSYM for " + product.name;
+        commands.push(cmd);
+
+        cmd = new Command(ModUtils.moduleProperty(product, "stripPath"),
+                          ["-S", primaryOutput.filePath]);
+        cmd.silent = true;
+        commands.push(cmd);
+    } else {
+        var objcopy = ModUtils.moduleProperty(product, "objcopyPath");
+
+        cmd = new Command(objcopy, ["--only-keep-debug", primaryOutput.filePath,
+                                    outputs.debuginfo[0].filePath]);
+        cmd.silent = true;
+        commands.push(cmd);
+
+        cmd = new Command(objcopy, ["--strip-debug", primaryOutput.filePath]);
+        cmd.silent = true;
+        commands.push(cmd);
+
+        cmd = new Command(objcopy, ["--add-gnu-debuglink=" + outputs.debuginfo[0].filePath,
+                                    primaryOutput.filePath]);
+        cmd.silent = true;
         commands.push(cmd);
     }
 

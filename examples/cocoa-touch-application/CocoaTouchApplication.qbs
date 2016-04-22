@@ -54,9 +54,6 @@ CppApplication {
             "AppDelegate.m",
             "CocoaTouchApplication-Info.plist",
             "CocoaTouchApplication-Prefix.pch",
-            "Default-568h@2x.png",
-            "Default.png",
-            "Default@2x.png",
             "DetailViewController.h",
             "DetailViewController.m",
             "MasterViewController.h",
@@ -71,9 +68,35 @@ CppApplication {
         files: [
             "DetailViewController_iPad.xib",
             "DetailViewController_iPhone.xib",
-            "InfoPlist.strings",
             "MasterViewController_iPad.xib",
             "MasterViewController_iPhone.xib"
         ]
     }
+
+    Group {
+        fileTagsFilter: product.type.concat([
+            "aggregate_infoplist", "pkginfo", "resourcerules",
+            "compiled_ibdoc", "compiled_assetcatalog",
+            "bundle.symlink.headers", "bundle.symlink.private-headers",
+            "bundle.symlink.resources", "bundle.symlink.executable",
+            "bundle.symlink.version", "bundle.hpp", "bundle.resource",
+            "bundle.provisioningprofile",
+            "bundle.codesignature"
+        ])
+        qbs.install: true
+        qbs.installDir: "Applications"
+        qbs.installSourceBase: product.buildDirectory
+    }
+
+    Group {
+        id: bundle_resources
+        files: [
+            "CocoaTouchApplication/Default-568h@2x.png",
+            "CocoaTouchApplication/Default.png",
+            "CocoaTouchApplication/Default@2x.png",
+            "CocoaTouchApplication/en.lproj/InfoPlist.strings"
+        ]
+    }
+
+    bundle.resources: bundle_resources.files
 }

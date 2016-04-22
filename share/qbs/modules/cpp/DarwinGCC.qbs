@@ -37,6 +37,7 @@ UnixGCC {
     condition: false
 
     Depends { name: "xcode"; required: qbs.toolchain && qbs.toolchain.contains("xcode") }
+    Depends { name: "codesign" }
 
     targetVendor: "apple"
     targetSystem: "darwin"

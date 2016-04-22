@@ -42,6 +42,8 @@ import 'gcc.js' as Gcc
 CppModule {
     condition: false
 
+    //additionalProductTypes: ["debuginfo", "debuginfo_bundle", "debuginfo_plist"]
+
     cxxStandardLibrary: {
         if (cxxLanguageVersion && qbs.toolchain.contains("clang")) {
             return cxxLanguageVersion !== "c++98" ? "libc++" : "libstdc++";
@@ -171,6 +173,7 @@ CppModule {
 
     Rule {
         id: dynamicLibraryLinker
+        condition: product.type.contains("dynamiclibrary")
         multiplex: true
         inputs: {
             var tags = ["obj", "linkerscript", "versionscript"];
@@ -182,12 +185,16 @@ CppModule {
         }
         inputsFromDependencies: ["dynamiclibrary_copy", "staticlibrary"]
 
-        outputFileTags: ["dynamiclibrary", "dynamiclibrary_symlink", "dynamiclibrary_copy", "debuginfo"]
+        outputFileTags: ["unsigned_dynamiclibrary", "dynamiclibrary_symlink", "dynamiclibrary_copy"]
         outputArtifacts: {
             var lib = {
-                filePath: product.destinationDirectory + "/"
-                          + PathTools.dynamicLibraryFilePath(product),
-                fileTags: ["dynamiclibrary"]
+                filePath: FileInfo.joinPaths(product.destinationDirectory, ".copy",
+                                             PathTools.dynamicLibraryFilePath(product)),
+                fileTags: ["unsigned_dynamiclibrary"],
+                qbs: {
+                    _moduleData_filePath: FileInfo.joinPaths(product.destinationDirectory,
+                                                         PathTools.dynamicLibraryFilePath(product))
+                }
             };
             var libCopy = {
                 // Copy of libfoo for smart re-linking.
@@ -212,7 +219,7 @@ CppModule {
                     artifacts.push(symlink);
                 }
             }
-            return artifacts.concat(Gcc.debugInfoArtifacts(product));
+            return artifacts;
         }
 
         prepare: {
@@ -222,6 +229,7 @@ CppModule {
 
     Rule {
         id: staticLibraryLinker
+        condition: product.type.contains("staticlibrary")
         multiplex: true
         inputs: ["obj", "linkerscript"]
         inputsFromDependencies: ["dynamiclibrary", "staticlibrary"]
@@ -263,6 +271,7 @@ CppModule {
 
     Rule {
         id: loadableModuleLinker
+        condition: product.type.contains("loadablemodule")
         multiplex: true
         inputs: {
             var tags = ["obj", "linkerscript"];
@@ -274,14 +283,12 @@ CppModule {
         }
         inputsFromDependencies: ["dynamiclibrary_copy", "staticlibrary"]
 
-        outputFileTags: ["loadablemodule", "debuginfo"]
-        outputArtifacts: {
-            var app = {
-                filePath: FileInfo.joinPaths(product.destinationDirectory,
-                                             PathTools.loadableModuleFilePath(product)),
-                fileTags: ["loadablemodule"]
-            }
-            return [app].concat(Gcc.debugInfoArtifacts(product));
+        Artifact {
+            filePath: FileInfo.joinPaths(product.destinationDirectory, ".copy",
+                                         PathTools.loadableModuleFilePath(product))
+            fileTags: ["unsigned_loadablemodule"]
+            qbs._moduleData_filePath: FileInfo.joinPaths(product.destinationDirectory,
+                                                         PathTools.loadableModuleFilePath(product))
         }
 
         prepare: {
@@ -291,6 +298,7 @@ CppModule {
 
     Rule {
         id: applicationLinker
+        condition: product.type.contains("application")
         multiplex: true
         inputs: {
             var tags = ["obj", "linkerscript"];
@@ -302,14 +310,12 @@ CppModule {
         }
         inputsFromDependencies: ["dynamiclibrary_copy", "staticlibrary"]
 
-        outputFileTags: ["application", "debuginfo"]
-        outputArtifacts: {
-            var app = {
-                filePath: FileInfo.joinPaths(product.destinationDirectory,
-                                             PathTools.applicationFilePath(product)),
-                fileTags: ["application"]
-            }
-            return [app].concat(Gcc.debugInfoArtifacts(product));
+        Artifact {
+            filePath: FileInfo.joinPaths(product.destinationDirectory, ".copy",
+                                         PathTools.applicationFilePath(product))
+            fileTags: ["unsigned_application"]
+            qbs._moduleData_filePath: FileInfo.joinPaths(product.destinationDirectory,
+                                                         PathTools.applicationFilePath(product))
         }
 
         prepare: {
@@ -345,6 +351,34 @@ CppModule {
         prepare: {
             return Gcc.prepareAssembler.apply(this, arguments);
         }
+    }
+
+    Rule {
+        id: debugInfo
+        condition: product.moduleProperty("cpp", "separateDebugInformation")
+        inputs: ["unsigned_application", "unsigned_dynamiclibrary", "unsigned_loadablemodule"]
+
+        outputFileTags: ["debuginfo", "debuginfo_bundle", "debuginfo_plist"]
+        outputArtifacts: {
+            var artifacts = [];
+            artifacts.push({
+                filePath: FileInfo.joinPaths(product.destinationDirectory, PathTools.debugInfoFilePath(product)),
+                fileTags: ["debuginfo"]
+            });
+            if (PathTools.debugInfoIsBundle(product)) {
+                artifacts.push({
+                    filePath: FileInfo.joinPaths(product.destinationDirectory, PathTools.debugInfoBundlePath(product)),
+                    fileTags: ["debuginfo_bundle"]
+                });
+                artifacts.push({
+                    filePath: FileInfo.joinPaths(product.destinationDirectory, PathTools.debugInfoPlistFilePath(product)),
+                    fileTags: ["debuginfo_plist"]
+                });
+            }
+            return artifacts;
+        }
+
+        prepare: Gcc.prepareDebugSymbols.apply(this, arguments)
     }
 
     Rule {
