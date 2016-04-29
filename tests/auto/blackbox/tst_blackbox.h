@@ -136,6 +136,7 @@ private slots:
     void groupsInModules();
     void iconset();
     void iconsetApp();
+    void infoPlist();
     void inputsFromDependencies();
     void installable();
     void installedApp();
