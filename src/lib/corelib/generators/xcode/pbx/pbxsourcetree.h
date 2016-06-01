@@ -1,7 +1,6 @@
 /****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of Qbs.
@@ -38,59 +37,27 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#ifndef PBXSOURCETREE_H
+#define PBXSOURCETREE_H
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
+#include <QString>
 
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "generators/visualstudio/visualstudiogenerator.h"
-#include "generators/xcode/xcodenativegenerator.h"
-#include "generators/xcode/xcodesimplegenerator.h"
-
-namespace qbs {
-
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
+namespace PBX
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
+    /*!
+     * Location that the file reference's path is relative to.
+     */
+    typedef enum {
+        Absolute,
+        Group,
+        SourceRoot,
+        BuildProductDir,
+        SdkRoot,
+        Custom
+    } PBXSourceTree;
+
+    QString sourceTreeString(PBXSourceTree tree);
+    PBXSourceTree sourceTreeIdentifier(const QString &string);
 }
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
-
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ClangCompilationDatabaseGenerator>::create();
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    generators << QSharedPointer<XcodeNativeGenerator>::create();
-    generators << QSharedPointer<XcodeSimpleGenerator>::create();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
-
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
-
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
-
-} // namespace qbs
+#endif // PBXSOURCETREE_H

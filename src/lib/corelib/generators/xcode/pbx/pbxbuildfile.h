@@ -1,7 +1,6 @@
 /****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of Qbs.
@@ -38,59 +37,47 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#ifndef PBXBUILDFILE_H
+#define PBXBUILDFILE_H
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
+#include "pbxobject.h"
+#include <QObject>
+#include <QSet>
 
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
+class PBXBuildPhase;
+class PBXFileReference;
 
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "generators/visualstudio/visualstudiogenerator.h"
-#include "generators/xcode/xcodenativegenerator.h"
-#include "generators/xcode/xcodesimplegenerator.h"
+class PBXBuildFilePrivate;
 
-namespace qbs {
-
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
+/*!
+ * \brief The PBXBuildFile class represents a file reference that is used in a build phase.
+ * Its primary purpose is to allow additional build settings to be applied at the file level.
+ */
+class PBXBuildFile : public PBXObject
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
-}
+    Q_OBJECT
+public:
+    explicit PBXBuildFile(PBXBuildPhase *parent = 0);
+    virtual ~PBXBuildFile();
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
+    QString isa() const;
+    PBXObjectMap toMap() const;
 
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ClangCompilationDatabaseGenerator>::create();
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    generators << QSharedPointer<XcodeNativeGenerator>::create();
-    generators << QSharedPointer<XcodeSimpleGenerator>::create();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
+    QString comment() const;
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
+    QByteArray hashData() const;
 
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
+    PBXFileReference *fileReference() const;
+    void setFileReference(PBXFileReference *reference);
 
-} // namespace qbs
+    QString absolutePath() const;
+    QSet<QString> attributes() const;
+
+    bool isWeakLinkedLibrary() const;
+    void setWeakLinkedLibrary(bool weakLinked);
+
+private:
+    PBXBuildFilePrivate *d;
+};
+
+#endif // PBXBUILDFILE_H

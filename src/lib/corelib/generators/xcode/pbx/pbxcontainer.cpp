@@ -1,7 +1,6 @@
 /****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of Qbs.
@@ -38,59 +37,33 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#include "pbxcontainer.h"
+#include "pbxgroup.h"
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
-
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "generators/visualstudio/visualstudiogenerator.h"
-#include "generators/xcode/xcodenativegenerator.h"
-#include "generators/xcode/xcodesimplegenerator.h"
-
-namespace qbs {
-
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
+class PBXContainerPrivate
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
+public:
+    PBXGroup group;
+};
+
+PBXContainer::PBXContainer(QObject *parent) :
+    PBXObject(parent), d(new PBXContainerPrivate)
+{
 }
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
+PBXContainer::~PBXContainer()
 {
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
+    delete d;
 }
 
-ProjectGeneratorManager::ProjectGeneratorManager()
+QByteArray PBXContainer::hashData() const
 {
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ClangCompilationDatabaseGenerator>::create();
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    generators << QSharedPointer<XcodeNativeGenerator>::create();
-    generators << QSharedPointer<XcodeSimpleGenerator>::create();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
+    QByteArray data = PBXObject::hashData();
+    data.append(d->group.hashData());
+    return data;
 }
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
+PBXGroup *PBXContainer::rootGroup() const
 {
-    return instance()->m_generators.keys();
+    return &d->group;
 }
-
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
-
-} // namespace qbs

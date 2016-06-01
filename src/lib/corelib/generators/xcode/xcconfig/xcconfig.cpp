@@ -1,7 +1,6 @@
 /****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of Qbs.
@@ -38,59 +37,57 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#include "xcconfig.h"
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
-
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "generators/visualstudio/visualstudiogenerator.h"
-#include "generators/xcode/xcodenativegenerator.h"
-#include "generators/xcode/xcodesimplegenerator.h"
+#include <QtCore/qvector.h>
+#include <QtCore/qvariant.h>
 
 namespace qbs {
 
-using namespace Internal;
+struct XCConfigEntry {
+};
 
-ProjectGeneratorManager::~ProjectGeneratorManager()
+struct XCConfigInclude : XCConfigEntry {
+    QString path;
+    bool optional = false;
+};
+
+struct XCConfigAssignment : XCConfigEntry {
+    QString key;
+    QString condition;
+    QVariant value;
+};
+
+class XCConfigPrivate {
+public:
+    QVector<XCConfigEntry> entries;
+};
+
+XCConfig::XCConfig()
+    : d(QSharedPointer<XCConfigPrivate>::create())
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
 }
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
+void XCConfig::addInclude(const QString &path, bool optional)
 {
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
+    XCConfigInclude entry;
+    entry.path = path;
+    entry.optional = optional;
+    d->entries.append(entry);
 }
 
-ProjectGeneratorManager::ProjectGeneratorManager()
+void XCConfig::insert(const QString &key, const QVariant &value)
 {
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ClangCompilationDatabaseGenerator>::create();
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    generators << QSharedPointer<XcodeNativeGenerator>::create();
-    generators << QSharedPointer<XcodeSimpleGenerator>::create();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
+    insert(key, value, QString());
 }
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
+void XCConfig::insert(const QString &key, const QVariant &value, const QString &condition)
 {
-    return instance()->m_generators.keys();
+    XCConfigAssignment entry;
+    entry.key = key;
+    entry.value = value;
+    entry.condition = condition;
+    d->entries.append(entry);;
 }
 
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
 }
-
-} // namespace qbs

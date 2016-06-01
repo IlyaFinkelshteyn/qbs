@@ -1,7 +1,6 @@
 /****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of Qbs.
@@ -38,59 +37,65 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#include "pbxbuildfile.h"
+#include "pbxbuildphase.h"
+#include "pbxfilereference.h"
+#include "pbxtarget.h"
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
-
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "generators/visualstudio/visualstudiogenerator.h"
-#include "generators/xcode/xcodenativegenerator.h"
-#include "generators/xcode/xcodesimplegenerator.h"
-
-namespace qbs {
-
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
+class PBXBuildPhasePrivate
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
+public:
+    QList<PBXBuildFile *> buildFiles;
+};
+
+PBXBuildPhase::PBXBuildPhase(PBXTarget *parent) :
+    PBXObject(parent), d(new PBXBuildPhasePrivate)
+{
+}
+
+PBXBuildPhase::~PBXBuildPhase()
+{
+    delete d;
+}
+
+PBXObjectMap PBXBuildPhase::toMap() const
+{
+    PBXObjectMap self = PBXObject::toMap();
+    self.insert(QStringLiteral("buildActionMask"), std::numeric_limits<int>::max());
+
+    QVariantList fileReferenceList;
+    for (PBXBuildFile *buildFile : buildFiles())
+        fileReferenceList += QVariant::fromValue(buildFile->identifier());
+    self.insert(QStringLiteral("files"), fileReferenceList);
+
+    self.insert(QStringLiteral("runOnlyForDeploymentPostprocessing"), 0);
+
+    return self;
+}
+
+QByteArray PBXBuildPhase::hashData() const
+{
+    QByteArray data;
+    PBXTarget *target = dynamic_cast<PBXTarget *>(parent());
+    if (target)
+        data.append(target->hashData());
+    return data; // TODO: Build phases for which a target may have multiple of, will not work
+}
+
+QList<PBXBuildFile *> PBXBuildPhase::buildFiles() const
+{
+    return d->buildFiles;
+}
+
+PBXBuildFile *PBXBuildPhase::addReference(PBXFileReference *reference)
+{
+    for (PBXBuildFile *buildFile : d->buildFiles) {
+        if (buildFile->fileReference() == reference)
+            return buildFile;
     }
-}
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
+    PBXBuildFile *buildFile = new PBXBuildFile(this);
+    buildFile->setFileReference(reference);
+    d->buildFiles.append(buildFile);
+    return buildFile;
 }
-
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ClangCompilationDatabaseGenerator>::create();
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    generators << QSharedPointer<XcodeNativeGenerator>::create();
-    generators << QSharedPointer<XcodeSimpleGenerator>::create();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
-
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
-
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
-
-} // namespace qbs

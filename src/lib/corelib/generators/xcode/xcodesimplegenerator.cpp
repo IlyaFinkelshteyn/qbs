@@ -1,7 +1,6 @@
 /****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of Qbs.
@@ -38,59 +37,33 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#include "xcodesimplegenerator.h"
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
-
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "generators/visualstudio/visualstudiogenerator.h"
-#include "generators/xcode/xcodenativegenerator.h"
-#include "generators/xcode/xcodesimplegenerator.h"
+#include "pbx/pbx.h"
 
 namespace qbs {
 
 using namespace Internal;
 
-ProjectGeneratorManager::~ProjectGeneratorManager()
+XcodeSimpleGenerator::XcodeSimpleGenerator()
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
 }
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
+QString XcodeSimpleGenerator::generatorName() const
 {
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
+    return QStringLiteral("xcode");
 }
 
-ProjectGeneratorManager::ProjectGeneratorManager()
+void XcodeSimpleGenerator::generate()
 {
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ClangCompilationDatabaseGenerator>::create();
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    generators << QSharedPointer<XcodeNativeGenerator>::create();
-    generators << QSharedPointer<XcodeSimpleGenerator>::create();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
+    XcodeGenerator::generate();
 }
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
+PBXTarget *XcodeSimpleGenerator::xcodeTargetForProduct(PBXProject *xcodeProject, const GeneratableProductData &product)
 {
-    return instance()->m_generators.keys();
-}
-
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
+    if (PBXTarget *target = XcodeGenerator::xcodeTargetForProduct(xcodeProject, product))
+        return target;
+    return new PBXLegacyTarget(xcodeProject);
 }
 
 } // namespace qbs

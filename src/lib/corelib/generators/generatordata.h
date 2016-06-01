@@ -44,6 +44,8 @@
 #include <QMap>
 #include <api/project.h>
 #include <api/projectdata.h>
+#include <tools/error.h>
+#include <functional>
 
 namespace qbs {
 
@@ -51,17 +53,61 @@ typedef QMap<QString, Project> GeneratableProjectMap;
 typedef QMap<QString, ProjectData> GeneratableProjectDataMap;
 typedef QMap<QString, ProductData> GeneratableProductDataMap;
 
-struct GeneratableProductData {
-    GeneratableProductDataMap data;
-    QString name() const;
-    QStringList dependencies() const;
+template <typename U> struct IMultiplexableContainer {
+    QMap<QString, U> data;
+
+    template <typename T> T uniqueValue(const std::function<T(const U &data)> &func,
+                                        const QString &errorMessage) const
+    {
+        QSet<T> values;
+        for (const auto &productData : data) {
+            values.insert(func(productData));
+            if (values.size() > 1)
+                throw ErrorInfo(errorMessage);
+        }
+        return values.toList().first();
+    }
+
+    void forEach(const std::function<void(const QString &configurationName,
+                                          const U &data)> &func) const
+    {
+        QMapIterator<QString, U> it(data);
+        while (it.hasNext()) {
+            it.next();
+            func(it.key(), it.value());
+        }
+    }
+
+    bool isValid() const
+    {
+        return !data.isEmpty();
+    }
+
+protected:
+    IMultiplexableContainer() { }
 };
 
-struct GeneratableProjectData {
-    GeneratableProjectDataMap data;
+struct GeneratableProductData : public IMultiplexableContainer<ProductData> {
+    QString name() const;
+    QStringList type() const;
+    QStringList dependencies() const;
+    CodeLocation location() const;
+
+    const ProductData operator[](const QString &configurationName)
+    {
+        return data[configurationName];
+    }
+};
+
+struct GeneratableProjectData : public IMultiplexableContainer<ProjectData> {
     QList<GeneratableProjectData> subProjects;
     QList<GeneratableProductData> products;
     QString name() const;
+
+    const ProjectData operator[](const QString &configurationName)
+    {
+        return data[configurationName];
+    }
 };
 
 struct GeneratableProject : public GeneratableProjectData {
@@ -73,6 +119,26 @@ struct GeneratableProject : public GeneratableProjectData {
     QFileInfo filePath() const;
     bool hasMultipleConfigurations() const;
     QStringList commandLine() const;
+
+    const Project operator[](const QString &configurationName) const
+    {
+        return projects[configurationName];
+    }
+
+    const ProjectData projectData(const QString &configurationName) const
+    {
+        return data[configurationName];
+    }
+
+    void forEach(const std::function<void(const QString &configurationName,
+                                          const Project &data)> &func) const
+    {
+        QMapIterator<QString, Project> it(projects);
+        while (it.hasNext()) {
+            it.next();
+            func(it.key(), it.value());
+        }
+    }
 };
 
 } // namespace qbs

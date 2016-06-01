@@ -11,3 +11,4 @@ HEADERS += \
 
 include(clangcompilationdb/clangcompilationdb.pri)
 include(visualstudio/visualstudio.pri)
+include(xcode/xcode.pri)

@@ -4,6 +4,7 @@ import QbsFunctions
 QbsLibrary {
     Depends { name: "clangcompilationdbgenerator" }
     Depends { name: "visualstudiogenerator" }
+    Depends { name: "xcodegenerator" }
     Depends { name: "cpp" }
     Depends { name: "Qt"; submodules: ["core-private", "network", "script", "xml"] }
     Depends { condition: qbsbuildconfig.enableProjectFileUpdates; name: "Qt.gui" }

@@ -1,7 +1,6 @@
 /****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of Qbs.
@@ -38,59 +37,30 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#ifndef PBXPRODUCTTYPE_H
+#define PBXPRODUCTTYPE_H
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
+#include <QString>
 
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
+namespace PBX {
+    typedef QString PBXProductType;
 
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "generators/visualstudio/visualstudiogenerator.h"
-#include "generators/xcode/xcodenativegenerator.h"
-#include "generators/xcode/xcodesimplegenerator.h"
+    // These have dedicated classes in Xcode
+    extern const PBXProductType PBXApplicationProductType;
+    extern const PBXProductType PBXBundleProductType;
+    extern const PBXProductType PBXDynamicLibraryProductType;
+    extern const PBXProductType PBXFrameworkProductType;
+    extern const PBXProductType PBXShallowBundleProductType;
+    extern const PBXProductType PBXShallowFrameworkProductType;
+    extern const PBXProductType PBXStaticLibraryProductType;
+    extern const PBXProductType PBXToolProductType;
+    extern const PBXProductType XCKernelExtensionProductType;
+    extern const PBXProductType XCShallowKernelExtensionProductType;
+    extern const PBXProductType XCStaticFrameworkProductType;
 
-namespace qbs {
-
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
-{
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
+    extern const PBXProductType XCApplicationExtensionProductType;
+    extern const PBXProductType XCInAppPurchaseContentProductType;
+    extern const PBXProductType XCXPCServiceProductType;
 }
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
-
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ClangCompilationDatabaseGenerator>::create();
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    generators << QSharedPointer<XcodeNativeGenerator>::create();
-    generators << QSharedPointer<XcodeSimpleGenerator>::create();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
-
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
-
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
-
-} // namespace qbs
+#endif // PBXPRODUCTTYPE_H

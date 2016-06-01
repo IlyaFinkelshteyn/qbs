@@ -1,7 +1,6 @@
 /****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of Qbs.
@@ -38,59 +37,49 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#ifndef OPENSTEPPROPERTYLIST_H
+#define OPENSTEPPROPERTYLIST_H
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
+#include <QByteArray>
+#include <QDateTime>
+#include <QList>
+#include <QString>
+#include <QVariant>
 
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
+class PBXObjectIdentifier;
+typedef QMap<PBXObjectIdentifier, QVariant> PBXObjectMap;
 
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "generators/visualstudio/visualstudiogenerator.h"
-#include "generators/xcode/xcodenativegenerator.h"
-#include "generators/xcode/xcodesimplegenerator.h"
-
-namespace qbs {
-
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
+class OpenStepPropertyList
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
-}
+    Q_DISABLE_COPY(OpenStepPropertyList)
+public:
+    static const QChar NewlineToken;
+    static const QChar DictionaryBeginToken;
+    static const QChar DictionarySeparatorToken;
+    static const QChar DictionaryEndToken;
+    static const QChar ArrayBeginToken;
+    static const QChar ArraySeparatorToken;
+    static const QChar ArrayEndToken;
+    static const QChar QuotedStringBeginToken;
+    static const QChar QuotedStringEndToken;
+    static const QChar DataBeginToken;
+    static const QChar DataEndToken;
+    static const QChar IndentationToken;
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
+    static QString toString(const QVariantMap &propertyList);
+    static QString toString(const PBXObjectMap &propertyList);
+    static QString toString(const QList<QVariant> &propertyList);
 
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ClangCompilationDatabaseGenerator>::create();
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    generators << QSharedPointer<XcodeNativeGenerator>::create();
-    generators << QSharedPointer<XcodeSimpleGenerator>::create();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
+private:
+    OpenStepPropertyList();
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
+    static QString toString(const QVariantMap &propertyList, int indentationLevel);
+    static QString toString(const PBXObjectMap &propertyList, int indentationLevel);
+    static QString toString(const QList<QVariant> &propertyList, int indentationLevel);
+    static QString toString(const QVariant &object, int indentationLevel);
+    static QString toString(const QByteArray &object, int indentationLevel);
+    static QString toString(const QDateTime &object, int indentationLevel);
+    static QString toString(const QString &object, int indentationLevel);
+};
 
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
-
-} // namespace qbs
+#endif // OPENSTEPPROPERTYLIST_H

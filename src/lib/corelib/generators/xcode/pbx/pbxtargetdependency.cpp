@@ -1,7 +1,6 @@
 /****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of Qbs.
@@ -38,59 +37,74 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#include "pbxcontaineritemproxy.h"
+#include "pbxproject.h"
+#include "pbxtarget.h"
+#include "pbxtargetdependency.h"
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
-
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "generators/visualstudio/visualstudiogenerator.h"
-#include "generators/xcode/xcodenativegenerator.h"
-#include "generators/xcode/xcodesimplegenerator.h"
-
-namespace qbs {
-
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
+class PBXTargetDependencyPrivate
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
+public:
+    PBXContainerItemProxy *targetProxy = nullptr;
+};
+
+PBXTargetDependency::PBXTargetDependency(PBXProject *parent)
+    : PBXObject(parent), d(new PBXTargetDependencyPrivate)
+{
+    d->targetProxy = new PBXContainerItemProxy(this);
+    d->targetProxy->setContainerPortal(parent);
+}
+
+PBXTargetDependency::~PBXTargetDependency()
+{
+    delete d;
+}
+
+QString PBXTargetDependency::isa() const
+{
+    return QStringLiteral("PBXTargetDependency");
+}
+
+PBXObjectMap PBXTargetDependency::toMap() const
+{
+    PBXObjectMap self = PBXObject::toMap();
+    if (d->targetProxy) {
+        self.insert(QStringLiteral("targetProxy"), QVariant::fromValue(d->targetProxy->identifier()));
+        if (d->targetProxy->target())
+            self.insert(QStringLiteral("target"), QVariant::fromValue(d->targetProxy->target()->identifier()));
     }
+    return self;
 }
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
+QString PBXTargetDependency::comment() const
 {
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
+    return PBXObject::comment();
 }
 
-ProjectGeneratorManager::ProjectGeneratorManager()
+QByteArray PBXTargetDependency::hashData() const
 {
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ClangCompilationDatabaseGenerator>::create();
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    generators << QSharedPointer<XcodeNativeGenerator>::create();
-    generators << QSharedPointer<XcodeSimpleGenerator>::create();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
+    QByteArray data = PBXObject::hashData();
+    if (d->targetProxy && d->targetProxy->target())
+        data.append(QStringLiteral(":") + d->targetProxy->target()->name());
+    return data;
 }
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
+PBXTarget *PBXTargetDependency::target() const
 {
-    return instance()->m_generators.keys();
+    return d->targetProxy->target();
 }
 
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
+void PBXTargetDependency::setTarget(PBXTarget *target)
 {
-    return instance()->m_generators.value(generatorName);
+    d->targetProxy->setTarget(target);
 }
 
-} // namespace qbs
+PBXContainerItemProxy *PBXTargetDependency::targetProxy() const
+{
+    return d->targetProxy;
+}
+
+void PBXTargetDependency::setTargetProxy(PBXContainerItemProxy *targetProxy)
+{
+    d->targetProxy = targetProxy;
+}

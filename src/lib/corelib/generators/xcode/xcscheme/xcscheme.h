@@ -1,7 +1,6 @@
 /****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of Qbs.
@@ -38,59 +37,47 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#ifndef XCSCHEME_H
+#define XCSCHEME_H
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
+#include <QObject>
 
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
+class QProcessEnvironment;
 
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "generators/visualstudio/visualstudiogenerator.h"
-#include "generators/xcode/xcodenativegenerator.h"
-#include "generators/xcode/xcodesimplegenerator.h"
+class PBXProject;
+class PBXTarget;
 
-namespace qbs {
+class XCSchemePrivate;
 
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
+class XCScheme : public QObject
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
-}
+    Q_OBJECT
+public:
+    explicit XCScheme(QObject *parent = 0);
+    virtual ~XCScheme();
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
+    PBXProject *project() const;
+    void setProject(PBXProject *project);
 
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ClangCompilationDatabaseGenerator>::create();
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    generators << QSharedPointer<XcodeNativeGenerator>::create();
-    generators << QSharedPointer<XcodeSimpleGenerator>::create();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
+    PBXTarget *target() const;
+    void setTarget(PBXTarget *target);
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
+    bool parallelizeBuildables() const;
+    void setParallelizeBuildables(bool parallelize);
 
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
+    bool buildImplicitDependencies() const;
+    void setBuildImplicitDependencies(bool build);
 
-} // namespace qbs
+    QString customExecutableFilePath() const;
+    void setCustomExecutableFilePath(const QString &customExecutableFilePath);
+
+    QProcessEnvironment runEnvironment() const;
+    void setRunEnvironment(const QProcessEnvironment &env);
+
+    bool serialize(const QString &filePath);
+
+private:
+    XCSchemePrivate *d;
+};
+
+#endif // XCSCHEME_H

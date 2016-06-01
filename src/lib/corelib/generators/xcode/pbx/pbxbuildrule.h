@@ -1,7 +1,6 @@
 /****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of Qbs.
@@ -38,59 +37,56 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#ifndef PBXBUILDRULE_H
+#define PBXBUILDRULE_H
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
+#include "pbxobject.h"
+#include <QObject>
+#include <QStringList>
 
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
+class PBXNativeTarget;
 
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "generators/visualstudio/visualstudiogenerator.h"
-#include "generators/xcode/xcodenativegenerator.h"
-#include "generators/xcode/xcodesimplegenerator.h"
+class PBXBuildRulePrivate;
 
-namespace qbs {
-
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
+class PBXBuildRule : public PBXObject
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
-}
+    Q_OBJECT
+    Q_DISABLE_COPY(PBXBuildRule)
+public:
+    explicit PBXBuildRule(PBXNativeTarget *parent = 0);
+    virtual ~PBXBuildRule();
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
+    QString isa() const override;
 
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ClangCompilationDatabaseGenerator>::create();
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    generators << QSharedPointer<XcodeNativeGenerator>::create();
-    generators << QSharedPointer<XcodeSimpleGenerator>::create();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
+    PBXObjectMap toMap() const override;
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
+    QByteArray hashData() const override;
 
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
+    QString name() const;
+    void setName(const QString &name);
 
-} // namespace qbs
+    bool isEditable() const;
+    void setEditable(bool editable);
+
+    QString filePatterns() const;
+    void setFilePatterns(const QString &filePatterns);
+
+    QString fileType() const;
+    void setFileType(const QString &fileType);
+
+    QString compilerSpec() const;
+    void setCompilerSpec(const QString &compilerSpec);
+
+    QString script() const;
+    void setScript(const QString &sourceCode);
+
+    void addOutputFile(const QString &filePath, const QStringList &compilerFlags = QStringList());
+    QStringList compilerFlags(const QString &outputFilePath) const;
+    bool containsOutputFile(const QString &filePath);
+    void removeOutputFile(const QString &filePath);
+
+private:
+    PBXBuildRulePrivate *d;
+};
+
+#endif // PBXBUILDRULE_H

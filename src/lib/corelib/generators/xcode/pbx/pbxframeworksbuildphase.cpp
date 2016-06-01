@@ -1,7 +1,6 @@
 /****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of Qbs.
@@ -38,59 +37,30 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#include "pbxframeworksbuildphase.h"
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
-
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "generators/visualstudio/visualstudiogenerator.h"
-#include "generators/xcode/xcodenativegenerator.h"
-#include "generators/xcode/xcodesimplegenerator.h"
-
-namespace qbs {
-
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
+PBXFrameworksBuildPhase::PBXFrameworksBuildPhase(PBXTarget *parent) :
+    PBXBuildPhase(parent)
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
 }
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
+QString PBXFrameworksBuildPhase::name() const
 {
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
+    return QStringLiteral("Frameworks");
 }
 
-ProjectGeneratorManager::ProjectGeneratorManager()
+QString PBXFrameworksBuildPhase::isa() const
 {
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ClangCompilationDatabaseGenerator>::create();
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    generators << QSharedPointer<XcodeNativeGenerator>::create();
-    generators << QSharedPointer<XcodeSimpleGenerator>::create();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
+    return QStringLiteral("PBXFrameworksBuildPhase");
 }
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
+PBXObjectMap PBXFrameworksBuildPhase::toMap() const
 {
-    return instance()->m_generators.keys();
+    PBXObjectMap self = PBXBuildPhase::toMap();
+    return self;
 }
 
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
+QString PBXFrameworksBuildPhase::comment() const
 {
-    return instance()->m_generators.value(generatorName);
+    return name();
 }
-
-} // namespace qbs

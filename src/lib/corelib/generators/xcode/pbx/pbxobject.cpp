@@ -1,7 +1,6 @@
 /****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of Qbs.
@@ -38,59 +37,72 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#include "pbxobject.h"
+#include <QCryptographicHash>
+#include <QSet>
+#include <QString>
+#include <QUuid>
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
+static QMap<QString, QByteArray> generatedIdentifiers;
 
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "generators/visualstudio/visualstudiogenerator.h"
-#include "generators/xcode/xcodenativegenerator.h"
-#include "generators/xcode/xcodesimplegenerator.h"
-
-namespace qbs {
-
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
+class PBXObjectPrivate
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
+public:
+    QString identifier;
+};
+
+PBXObject::PBXObject(QObject *parent)
+    : QObject(parent), d(new PBXObjectPrivate)
+{
+}
+
+PBXObject::~PBXObject()
+{
+    delete d;
+}
+
+QString PBXObject::createIdentifier(const QByteArray &hashData)
+{
+    if (qgetenv("QBS_XCODE_GENERATOR_DETERMINISTIC_IDENTIFIERS") == QByteArray("1")) {
+        QCryptographicHash hash(QCryptographicHash::Sha3_512);
+        hash.addData(hashData);
+        const QString result = QString::fromLatin1(hash.result().left(12).toHex().toUpper());
+        if (generatedIdentifiers.contains(result)) {
+            // hash collision!
+            fprintf(stderr,
+                    "Xcode project generator hash collision for identifier %s.\nInput data: '%s'.\n"
+                    "File a bug report and set the "
+                    "QBS_XCODE_GENERATOR_NO_DETERMINISTIC_IDENTIFIERS\nenvironment variable to "
+                    "work around.\n", qPrintable(result), hashData.data());
+            abort();
+        }
+        generatedIdentifiers.insert(result, hashData);
+        return result;
     }
+
+    return QString::fromLatin1(QUuid::createUuid().toByteArray().left(12).toHex().toUpper());
 }
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
+PBXObjectIdentifier PBXObject::identifier() const
 {
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
+    if (d->identifier.isEmpty())
+        d->identifier = createIdentifier(isa().toUtf8() + QByteArray(":") + hashData());
+    return PBXObjectIdentifier(d->identifier, isa(), comment());
 }
 
-ProjectGeneratorManager::ProjectGeneratorManager()
+PBXObjectMap PBXObject::toMap() const
 {
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ClangCompilationDatabaseGenerator>::create();
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    generators << QSharedPointer<XcodeNativeGenerator>::create();
-    generators << QSharedPointer<XcodeSimpleGenerator>::create();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
+    PBXObjectMap self;
+    self.insert(QStringLiteral("isa"), isa());
+    return self;
 }
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
+QString PBXObject::comment() const
 {
-    return instance()->m_generators.keys();
+    return isa();
 }
 
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
+QByteArray PBXObject::hashData() const
 {
-    return instance()->m_generators.value(generatorName);
+    return QByteArray();
 }
-
-} // namespace qbs

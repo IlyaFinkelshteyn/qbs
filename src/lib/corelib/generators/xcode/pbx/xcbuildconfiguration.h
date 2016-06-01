@@ -1,7 +1,6 @@
 /****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of Qbs.
@@ -38,59 +37,44 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#ifndef XCBUILDCONFIGURATION_H
+#define XCBUILDCONFIGURATION_H
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
+#include "pbxobject.h"
+#include <QObject>
 
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
+class PBXFileReference;
+class XCConfigurationList;
 
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "generators/visualstudio/visualstudiogenerator.h"
-#include "generators/xcode/xcodenativegenerator.h"
-#include "generators/xcode/xcodesimplegenerator.h"
+class XCBuildConfigurationPrivate;
 
-namespace qbs {
-
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
+class XCBuildConfiguration : public PBXObject
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
-}
+    Q_OBJECT
+public:
+    explicit XCBuildConfiguration(XCConfigurationList *parent = 0);
+    ~XCBuildConfiguration();
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
+    QString isa() const;
+    PBXObjectMap toMap() const;
 
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ClangCompilationDatabaseGenerator>::create();
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    generators << QSharedPointer<XcodeNativeGenerator>::create();
-    generators << QSharedPointer<XcodeSimpleGenerator>::create();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
+    QString name() const;
+    void setName(const QString &name);
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
+    static bool isValidBaseConfigurationFile(PBXFileReference *reference);
 
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
+    void setBaseConfigurationReference(PBXFileReference *reference);
+    PBXFileReference *baseConfigurationReference();
 
-} // namespace qbs
+    QVariant buildSetting(const QString &key);
+    void setBuildSetting(const QString &key, const QVariant &value);
+
+    QString comment() const;
+
+    QByteArray hashData() const;
+
+private:
+    XCBuildConfigurationPrivate *d;
+};
+
+#endif // XCBUILDCONFIGURATION_H

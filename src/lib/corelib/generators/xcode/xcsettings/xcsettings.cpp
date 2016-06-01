@@ -1,7 +1,6 @@
 /****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of Qbs.
@@ -38,59 +37,63 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#include "xcsettings.h"
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
+#include <QFile>
+#include <QTextStream>
+#include <QXmlStreamWriter>
 
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
+class XCSettingsPrivate {
+public:
+    bool autocreateSchemes = false;
+};
 
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "generators/visualstudio/visualstudiogenerator.h"
-#include "generators/xcode/xcodenativegenerator.h"
-#include "generators/xcode/xcodesimplegenerator.h"
-
-namespace qbs {
-
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
+XCSettings::XCSettings(QObject *parent)
+    : QObject(parent)
+    , d(new XCSettingsPrivate)
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
+}
+
+XCSettings::~XCSettings()
+{
+    delete d;
+}
+
+bool XCSettings::autocreateSchemes() const
+{
+    return d->autocreateSchemes;
+}
+
+void XCSettings::setAutocreateSchemes(bool autocreateSchemes)
+{
+    d->autocreateSchemes = autocreateSchemes;
+}
+
+bool XCSettings::serialize(const QString &filePath)
+{
+    QFile file(filePath);
+    if (file.open(QIODevice::WriteOnly)) {
+        QXmlStreamWriter writer(&file);
+        writer.setAutoFormatting(true);
+        writer.setAutoFormattingIndent(-1);
+
+        writer.writeStartDocument();
+        writer.writeDTD(QStringLiteral("<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">"));
+
+        writer.writeStartElement(QStringLiteral("plist"));
+        writer.writeAttribute(QStringLiteral("version"), QStringLiteral("1.0"));
+        writer.writeStartElement(QStringLiteral("dict"));
+
+        writer.writeTextElement(QStringLiteral("key"), QStringLiteral("IDEWorkspaceSharedSettings_AutocreateContextsIfNeeded"));
+        writer.writeEmptyElement(d->autocreateSchemes ? QStringLiteral("true") : QStringLiteral("false"));
+
+        writer.writeEndElement(); // </dict>
+        writer.writeEndElement(); // </plist>
+        writer.writeEndDocument();
+
+        return file.error() == QFile::NoError;
     }
+
+    return false;
 }
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
-
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ClangCompilationDatabaseGenerator>::create();
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    generators << QSharedPointer<XcodeNativeGenerator>::create();
-    generators << QSharedPointer<XcodeSimpleGenerator>::create();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
-
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
-
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
-
-} // namespace qbs

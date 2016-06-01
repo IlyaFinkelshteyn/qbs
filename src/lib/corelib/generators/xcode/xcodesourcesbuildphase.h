@@ -1,7 +1,6 @@
 /****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of Qbs.
@@ -38,59 +37,32 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#ifndef XCODESOURCESBUILDPHASE_H
+#define XCODESOURCESBUILDPHASE_H
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
+#include <QtCore/qsharedpointer.h>
+#include <generators/generator.h>
 
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "generators/visualstudio/visualstudiogenerator.h"
-#include "generators/xcode/xcodenativegenerator.h"
-#include "generators/xcode/xcodesimplegenerator.h"
+class PBXGroup;
+class PBXProject;
+class PBXTarget;
 
 namespace qbs {
 
-using namespace Internal;
+class XcodeSourcesBuildPhasePrivate;
 
-ProjectGeneratorManager::~ProjectGeneratorManager()
+class XcodeSourcesBuildPhase
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
-}
+    Q_DISABLE_COPY(XcodeSourcesBuildPhase)
+public:
+    XcodeSourcesBuildPhase(PBXProject *xcodeProject, PBXTarget *xcodeTarget);
+    void addFiles(const GeneratableProject &project, const GeneratableProductData &productData,
+                  PBXGroup *xcodeProductGroup);
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
-
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ClangCompilationDatabaseGenerator>::create();
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    generators << QSharedPointer<XcodeNativeGenerator>::create();
-    generators << QSharedPointer<XcodeSimpleGenerator>::create();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
-
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
-
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
+private:
+    QSharedPointer<XcodeSourcesBuildPhasePrivate> d;
+};
 
 } // namespace qbs
+
+#endif // XCODESOURCESBUILDPHASE_H

@@ -1,7 +1,6 @@
 /****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of Qbs.
@@ -38,59 +37,48 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#ifndef PBXREFERENCE_H
+#define PBXREFERENCE_H
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
+#include "pbxobject.h"
+#include "pbxsourcetree.h"
+#include <QObject>
 
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
+class PBXReferencePrivate;
 
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "generators/visualstudio/visualstudiogenerator.h"
-#include "generators/xcode/xcodenativegenerator.h"
-#include "generators/xcode/xcodesimplegenerator.h"
-
-namespace qbs {
-
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
+// Mono calls this PBXFileElement?
+class PBXReference : public PBXObject
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
-}
+    Q_OBJECT
+    Q_DISABLE_COPY(PBXReference)
+protected:
+    explicit PBXReference(QObject *parent = 0);
+    virtual ~PBXReference();
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
+public:
+    PBXObjectMap toMap() const;
 
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ClangCompilationDatabaseGenerator>::create();
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    generators << QSharedPointer<XcodeNativeGenerator>::create();
-    generators << QSharedPointer<XcodeSimpleGenerator>::create();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
+    QString name() const;
+    void setName(const QString &name);
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
+    /*!
+     * File path of the referenced file, relative based on the value of \a sourceTree.
+     */
+    QString path() const;
+    void setPath(const QString &path);
 
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
+    PBX::PBXSourceTree sourceTree() const;
+    void setSourceTree(PBX::PBXSourceTree sourceTree);
 
-} // namespace qbs
+    QString sourceTreeVariable() const;
+    void setSourceTree(const QString &variableName);
+
+    QString comment() const;
+
+    QByteArray hashData() const;
+
+private:
+    PBXReferencePrivate *d;
+};
+
+#endif // PBXREFERENCE_H

@@ -1,7 +1,6 @@
 /****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of Qbs.
@@ -38,59 +37,86 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#include "pbxcontaineritemproxy.h"
+#include "pbxproject.h"
+#include "pbxtarget.h"
+#include "pbxtargetdependency.h"
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
-
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "generators/visualstudio/visualstudiogenerator.h"
-#include "generators/xcode/xcodenativegenerator.h"
-#include "generators/xcode/xcodesimplegenerator.h"
-
-namespace qbs {
-
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
+class PBXContainerItemProxyPrivate
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
+public:
+    PBXProject *containerPortal = nullptr;
+    PBXTarget *target = nullptr;
+};
+
+PBXContainerItemProxy::PBXContainerItemProxy(PBXTargetDependency *parent) :
+    PBXObject(parent), d(new PBXContainerItemProxyPrivate)
+{
+}
+
+PBXContainerItemProxy::~PBXContainerItemProxy()
+{
+    delete d;
+}
+
+QString PBXContainerItemProxy::isa() const
+{
+    return QStringLiteral("PBXContainerItemProxy");
+}
+
+PBXObjectMap PBXContainerItemProxy::toMap() const
+{
+    PBXObjectMap self = PBXObject::toMap();
+    if (d->containerPortal)
+        self.insert(QStringLiteral("containerPortal"), QVariant::fromValue(d->containerPortal->identifier()));
+
+    self.insert(QStringLiteral("proxyType"), 1); // TODO: Always the same?
+
+    if (d->target) {
+        // We deliberately don't store the actual PBXObjectIdentifier,
+        // because Xcode itself doesn't write the ID with a comment annotation
+        self.insert(QStringLiteral("remoteGlobalIDString"), d->target->identifier().identifier());
+        self.insert(QStringLiteral("remoteInfo"), d->target->name());
     }
+
+    return self;
 }
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
+QString PBXContainerItemProxy::comment() const
 {
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
+    return PBXObject::comment();
 }
 
-ProjectGeneratorManager::ProjectGeneratorManager()
+QByteArray PBXContainerItemProxy::hashData() const
 {
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ClangCompilationDatabaseGenerator>::create();
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    generators << QSharedPointer<XcodeNativeGenerator>::create();
-    generators << QSharedPointer<XcodeSimpleGenerator>::create();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
+    QByteArray data = PBXObject::hashData();
+    if (d->containerPortal) {
+        data.append(d->containerPortal->hashData());
     }
+
+    if (d->target) {
+        data.append(d->target->hashData());
+    }
+
+    return data;
 }
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
+PBXProject *PBXContainerItemProxy::containerPortal() const
 {
-    return instance()->m_generators.keys();
+    return d->containerPortal;
 }
 
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
+void PBXContainerItemProxy::setContainerPortal(PBXProject *containerPortal)
 {
-    return instance()->m_generators.value(generatorName);
+    d->containerPortal = containerPortal;
 }
 
-} // namespace qbs
+PBXTarget *PBXContainerItemProxy::target() const
+{
+    return d->target;
+}
+
+void PBXContainerItemProxy::setTarget(PBXTarget *target)
+{
+    d->target = target;
+}

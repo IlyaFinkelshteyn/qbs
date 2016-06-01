@@ -1,7 +1,6 @@
 /****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of Qbs.
@@ -38,59 +37,91 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#ifndef PBXOBJECT_H
+#define PBXOBJECT_H
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
+#include <QObject>
+#include <QString>
+#include <QVariant>
 
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
+class PBXObjectPrivate;
 
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "generators/visualstudio/visualstudiogenerator.h"
-#include "generators/xcode/xcodenativegenerator.h"
-#include "generators/xcode/xcodesimplegenerator.h"
-
-namespace qbs {
-
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
-{
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
+class PBXObjectIdentifier {
+public:
+    PBXObjectIdentifier() {
     }
-}
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
-
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ClangCompilationDatabaseGenerator>::create();
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    generators << QSharedPointer<XcodeNativeGenerator>::create();
-    generators << QSharedPointer<XcodeSimpleGenerator>::create();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
+    PBXObjectIdentifier(const PBXObjectIdentifier &other) {
+        _key = other._key;
+        _isa = other._isa;
+        _comment = other._comment;
     }
+
+    PBXObjectIdentifier(const QString &identifier, const QString &isa = QString(), const QString &comment = QString()) {
+        _key = identifier;
+        _isa = isa;
+        _comment = comment;
+    }
+
+    QString toString() const {
+        return identifier();
+    }
+
+    QString identifier() const {
+        return _key;
+    }
+
+    QString isa() const {
+        return _isa;
+    }
+
+    QString comment() const {
+        return _comment;
+    }
+
+    bool operator==(const PBXObjectIdentifier &other) const {
+        return _key == other._key && _isa == other._isa && _comment == other._comment;
+    }
+
+    bool operator<(const PBXObjectIdentifier &other) const {
+        return _isa + _key < other._isa + other._key;
+    }
+
+private:
+    QString _key;
+    QString _isa;
+    QString _comment;
+};
+
+Q_DECLARE_METATYPE(PBXObjectIdentifier)
+
+inline bool qHash(const PBXObjectIdentifier &other) {
+    return qHash(other.toString());
 }
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
+typedef QMap<PBXObjectIdentifier, QVariant> PBXObjectMap;
+Q_DECLARE_METATYPE(PBXObjectMap)
+
+class PBXObject : public QObject
 {
-    return instance()->m_generators.keys();
-}
+    Q_OBJECT
+    Q_DISABLE_COPY(PBXObject)
+protected:
+    explicit PBXObject(QObject *parent = 0);
 
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
+public:
+    virtual ~PBXObject();
 
-} // namespace qbs
+    static QString createIdentifier(const QByteArray &hashData);
+
+    PBXObjectIdentifier identifier() const;
+    virtual QString isa() const = 0;
+    virtual PBXObjectMap toMap() const;
+    virtual QString comment() const;
+    virtual QByteArray hashData() const;
+
+private:
+    PBXObjectPrivate *d;
+};
+
+#endif // PBXOBJECT_H

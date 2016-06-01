@@ -1,7 +1,6 @@
 /****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of Qbs.
@@ -38,59 +37,48 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#include "pbxfileencoding.h"
+#include "pbxfilereference.h"
+#include "pbxfiletype.h"
+#include "pbxgroup.h"
+#include "pbxsourcetree.h"
+#include <QFileInfo>
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
-
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "generators/visualstudio/visualstudiogenerator.h"
-#include "generators/xcode/xcodenativegenerator.h"
-#include "generators/xcode/xcodesimplegenerator.h"
-
-namespace qbs {
-
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
+class PBXFileReferencePrivate
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
+public:
+};
+
+PBXFileReference::PBXFileReference(QObject *parent) :
+    PBXReference(parent), d(new PBXFileReferencePrivate)
+{
 }
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
+PBXFileReference::~PBXFileReference()
 {
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
+    delete d;
 }
 
-ProjectGeneratorManager::ProjectGeneratorManager()
+QString PBXFileReference::isa() const
 {
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ClangCompilationDatabaseGenerator>::create();
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    generators << QSharedPointer<XcodeNativeGenerator>::create();
-    generators << QSharedPointer<XcodeSimpleGenerator>::create();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
+    return QStringLiteral("PBXFileReference");
 }
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
+PBXObjectMap PBXFileReference::toMap() const
 {
-    return instance()->m_generators.keys();
+    PBXObjectMap self = PBXReference::toMap();
+    self.insert(QStringLiteral("fileEncoding"), PBX::Default);
+    //self.insert(QStringLiteral("explicitFileType"), PBXFileType::typeForFileInfo(QFileInfo(path()))); // PBXFileType
+    //self.insert(QStringLiteral("includeInIndex"), 0);
+    self.insert(QStringLiteral("lastKnownFileType"), PBXFileType::typeForFileInfo(QFileInfo(path()))); // PBXFileType
+    return self;
 }
 
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
+QByteArray PBXFileReference::hashData() const
 {
-    return instance()->m_generators.value(generatorName);
+    QByteArray data = PBXReference::hashData();
+    PBXGroup *parentGroup = dynamic_cast<PBXGroup *>(parent());
+    if (parentGroup)
+        data.prepend(parentGroup->hashData() + QByteArrayLiteral(":"));
+    return data;
 }
-
-} // namespace qbs

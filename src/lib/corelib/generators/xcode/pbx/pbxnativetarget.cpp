@@ -1,7 +1,6 @@
 /****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of Qbs.
@@ -38,59 +37,59 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#include "pbxbuildphase.h"
+#include "pbxbuildrule.h"
+#include "pbxfilereference.h"
+#include "pbxnativetarget.h"
+#include "pbxproject.h"
+#include "xcconfigurationlist.h"
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
-
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "generators/visualstudio/visualstudiogenerator.h"
-#include "generators/xcode/xcodenativegenerator.h"
-#include "generators/xcode/xcodesimplegenerator.h"
-
-namespace qbs {
-
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
+class PBXNativeTargetPrivate
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
+public:
+    QList<PBXBuildRule *> buildRules;
+};
+
+PBXNativeTarget::PBXNativeTarget(PBXProject *parent) :
+    PBXTarget(parent), d(new PBXNativeTargetPrivate)
+{
 }
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
+PBXNativeTarget::~PBXNativeTarget()
 {
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
+    delete d;
 }
 
-ProjectGeneratorManager::ProjectGeneratorManager()
+QString PBXNativeTarget::isa() const
 {
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ClangCompilationDatabaseGenerator>::create();
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    generators << QSharedPointer<XcodeNativeGenerator>::create();
-    generators << QSharedPointer<XcodeSimpleGenerator>::create();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
+    return QStringLiteral("PBXNativeTarget");
 }
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
+PBXObjectMap PBXNativeTarget::toMap() const
 {
-    return instance()->m_generators.keys();
+    // This cannot be empty (and will crash Xcode if it is),
+    // and is only used for native targets (not legacy targets),
+    // though for the latter it will influence icons, which is nice.
+    if (productType().isEmpty())
+        throw std::runtime_error("PBXTarget::productType cannot be empty");
+
+    PBXObjectMap self = PBXTarget::toMap();
+    self.insert(QStringLiteral("productInstallPath"), QStringLiteral("$(HOME)/Applications"));
+
+    QVariantList buildRuleReferences;
+    for (PBXBuildRule *buildRule : buildRules())
+        buildRuleReferences += QVariant::fromValue(buildRule->identifier());
+    self.insert(QStringLiteral("buildRules"), buildRuleReferences);
+
+    return self;
 }
 
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
+QList<PBXBuildRule *> PBXNativeTarget::buildRules() const
 {
-    return instance()->m_generators.value(generatorName);
+    return d->buildRules;
 }
 
-} // namespace qbs
+void PBXNativeTarget::addBuildRule(PBXBuildRule *rule)
+{
+    d->buildRules.append(rule);
+}

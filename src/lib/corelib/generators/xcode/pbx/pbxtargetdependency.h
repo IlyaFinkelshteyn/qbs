@@ -1,7 +1,6 @@
 /****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of Qbs.
@@ -38,59 +37,40 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#ifndef PBXTARGETDEPENDENCY_H
+#define PBXTARGETDEPENDENCY_H
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
+#include "pbxobject.h"
 
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
+class PBXContainerItemProxy;
+class PBXProject;
+class PBXTarget;
+class PBXTargetDependencyPrivate;
 
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "generators/visualstudio/visualstudiogenerator.h"
-#include "generators/xcode/xcodenativegenerator.h"
-#include "generators/xcode/xcodesimplegenerator.h"
-
-namespace qbs {
-
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
+class PBXTargetDependency : public PBXObject
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
-}
+    Q_OBJECT
+public:
+    explicit PBXTargetDependency(PBXProject *parent = 0);
+    virtual ~PBXTargetDependency();
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
+    QString isa() const;
+    PBXObjectMap toMap() const;
 
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ClangCompilationDatabaseGenerator>::create();
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    generators << QSharedPointer<XcodeNativeGenerator>::create();
-    generators << QSharedPointer<XcodeSimpleGenerator>::create();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
+    QString comment() const;
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
+    QByteArray hashData() const;
 
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
+    // http://www.monobjc.net/xcode-project-file-format.html claims
+    // this is a PBXNativeTarget but Xcode says "legacy" (shell script) targets work too...
+    PBXTarget *target() const;
+    void setTarget(PBXTarget *target);
 
-} // namespace qbs
+    PBXContainerItemProxy *targetProxy() const;
+    void setTargetProxy(PBXContainerItemProxy *targetProxy);
+
+private:
+    PBXTargetDependencyPrivate *d;
+};
+
+#endif // PBXTARGETDEPENDENCY_H
