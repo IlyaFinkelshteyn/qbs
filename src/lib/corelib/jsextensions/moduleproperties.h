@@ -40,6 +40,8 @@
 namespace qbs {
 namespace Internal {
 
+class PersistentObject;
+
 class ModuleProperties
 {
 public:
@@ -47,7 +49,7 @@ public:
     static void init(QScriptValue artifactObject, const Artifact *artifact);
 
 private:
-    static void init(QScriptValue objectWithProperties, const void *ptr, const QString &type);
+    static void init(QScriptValue objectWithProperties, const PersistentObject *ptr, const QString &type);
 
     static QScriptValue js_moduleProperties(QScriptContext *context, QScriptEngine *engine);
     static QScriptValue js_moduleProperty(QScriptContext *context, QScriptEngine *engine);

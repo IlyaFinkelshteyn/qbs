@@ -46,6 +46,8 @@
 
 #include <algorithm>
 
+#include <QJsonDocument>
+
 namespace qbs {
 namespace Internal {
 
@@ -110,6 +112,22 @@ QScriptValue Transformer::translateFileConfig(QScriptEngine *scriptEngine, Artif
     obj.setProperty(QLatin1String("fileTags"), scriptEngine->toScriptValue(fileTags));
     if (!defaultModuleName.isEmpty())
         obj.setProperty(QLatin1String("moduleName"), defaultModuleName);
+    //obj.setProperty(QLatin1String("__depPtr"), scriptEngine->toScriptValue(quintptr(artifact->sourceProductPtr.data())));
+    obj.setProperty(QLatin1String("pork"), QStringLiteral("shart"));
+
+    if (product() && artifact->transformer && artifact->transformer->product()) {
+        Q_ASSERT(product()->name == artifact->transformer->product()->name);
+        QStringList dpnms;
+        for (const auto &c : product()->dependencyData.keys()) {
+            dpnms << c->name;
+        }
+
+        if (!product()->dependencyData.isEmpty()) {
+            qDebug() << qPrintable(QString::fromUtf8(QJsonDocument::fromVariant(product()->dependencyData.first().moduleProperties).toJson()));
+            obj.setProperty(QLatin1String("cpp_doShart"), scriptEngine->toScriptValue(product()->dependencyData.first().moduleProperties));
+        }
+    }
+
     return obj;
 }
 

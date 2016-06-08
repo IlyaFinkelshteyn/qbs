@@ -60,6 +60,9 @@
 
 #include <algorithm>
 
+#include <QJsonDocument>
+#include <QScriptValueIterator>
+
 namespace qbs {
 namespace Internal {
 
@@ -270,6 +273,8 @@ private:
                 // It's currently not possible because of e.g. things like "cpp.staticLibraries"
                 // inside Artifact items...
                 || item->type() == ItemType::Module
+
+                || item->type() == ItemType::Depends
 
                 // The Properties child of a SubProject item is not a regular item.
                 || item->type() == ItemType::PropertiesInSubProject) {
@@ -908,6 +913,17 @@ void ModuleLoader::resolveDependsItem(DependsContext *dependsContext, Item *pare
     bool submodulesPropertySet;
     QStringList submodules = m_evaluator->stringListValue(dependsItem, QLatin1String("submodules"),
                                                           &submodulesPropertySet);
+    bool xz = false;
+    auto zc = m_evaluator->value(dependsItem, QStringLiteral("cpp"), &xz);
+//    qDebug() << "Depends.eval.cpp.dynamicLibraries" << zc.toString();
+//    qDebug() << xz;
+//    qDebug() << zc.property(QStringLiteral("doSharts")).toString();
+
+//    for (const auto &m : *moduleResults)
+//        dependsItem->addModule(m);
+        //qDebug() << m.name;
+    //qDebug() << dependsItem->propertyDeclarations().keys();
+    //qDebug() << "Depends.children:" << dependsItem->children();
     if (productTypesIsSet) {
         if (nameIsSet) {
             throw ErrorInfo(Tr::tr("The 'productTypes' and 'name' properties are mutually "
@@ -990,11 +1006,30 @@ void ModuleLoader::resolveDependsItem(DependsContext *dependsContext, Item *pare
                 m_logger.qbsTrace() << "product dependency loaded: " << moduleName.toString();
             const QString profilesKey = QLatin1String("profiles");
             const QStringList profiles = m_evaluator->stringListValue(dependsItem, profilesKey);
+
+            qDebug() << dependsItem->properties();
+
+            QMap<QString, QScriptValue> moduleProperties;
+            for (const auto &m : *moduleResults) {
+                QScriptValue moduleValue = m_evaluator->value(dependsItem, m.name.toString());
+//                QVariantMap obj;
+//                QScriptValueIterator it(moduleValue);
+//                while (it.hasNext()) {
+//                    it.next();
+//                    obj.insert(it.name(), moduleValue.property(it.name()).toVariant());
+//                }
+                moduleProperties.insert(m.name.toString(), moduleValue);
+            }
+
+            //qDebug() << qPrintable(QString::fromUtf8(QJsonDocument::fromVariant(moduleProperties).toJson()));
+
+
             if (profiles.isEmpty()) {
                 ModuleLoaderResult::ProductInfo::Dependency dependency;
                 dependency.name = moduleName.toString();
                 dependency.profile = QLatin1String("*");
                 dependency.isRequired = isRequired;
+                dependency.item = dependsItem;
                 productResults->append(dependency);
                 continue;
             }
@@ -1003,6 +1038,7 @@ void ModuleLoader::resolveDependsItem(DependsContext *dependsContext, Item *pare
                 dependency.name = moduleName.toString();
                 dependency.profile = profile;
                 dependency.isRequired = isRequired;
+                dependency.item = dependsItem;
                 productResults->append(dependency);
             }
         }

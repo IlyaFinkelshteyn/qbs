@@ -395,6 +395,11 @@ void ProjectResolver::resolveProduct(Item *item, ProjectContext *projectContext)
     resolveModules(item, projectContext);
     product->fileTags += productContext.additionalFileTags;
 
+    // Resolve module properties in Depends items after modules have been resolved
+    foreach (Item *child, subItems)
+        if (child->type() == ItemType::Depends)
+            resolveDepends(child, projectContext);
+
     foreach (const ResolvedTransformerPtr &transformer, product->transformers)
         matchArtifactProperties(product, transformer->outputs);
 
@@ -501,12 +506,32 @@ static bool isSomeModulePropertySet(Item *group)
             // An item value is a module value in this case.
             ItemValuePtr iv = it.value().staticCast<ItemValue>();
             foreach (ValuePtr ivv, iv->item()->properties()) {
-                if (ivv->type() == Value::JSSourceValueType)
+                if (ivv->type() == Value::JSSourceValueType) {
                     return true;
+                }
             }
         }
     }
     return false;
+}
+
+void ProjectResolver::resolveDepends(Item *item, ProjectContext *projectContext)
+{
+    Q_UNUSED(projectContext);
+    checkCancelation();
+    //Q_ASSERT(isSomeModulePropertySet(item));
+    if (isSomeModulePropertySet(item)) {
+        PropertyMapPtr moduleProperties = PropertyMapInternal::create();
+        m_evaluator->setCachingEnabled(true);
+        moduleProperties->setValue(evaluateModuleValues(item, m_productContext->item));
+        m_evaluator->setCachingEnabled(false);
+
+        //m_productContext->product->dependencyData.insert()
+
+        qDebug() << "FUCK!!!" << item->propertyDeclarations().size();
+
+        qDebug() << "SHIT" << qPrintable(moduleProperties->toJSLiteral());
+    }
 }
 
 void ProjectResolver::resolveGroup(Item *item, ProjectContext *projectContext)
@@ -862,11 +887,11 @@ void ProjectResolver::resolveScanner(Item *item, ProjectResolver::ProjectContext
     m_productContext->product->scanners += scanner;
 }
 
-QList<ResolvedProductPtr> ProjectResolver::getProductDependencies(const ResolvedProductConstPtr &product,
+QMap<ResolvedProductPtr, ResolvedProduct::DependencyData> ProjectResolver::getProductDependencies(const ResolvedProductConstPtr &product,
         const ModuleLoaderResult::ProductInfo &productInfo, bool &disabledDependency)
 {
     QList<ModuleLoaderResult::ProductInfo::Dependency> dependencies = productInfo.usedProducts;
-    QList<ResolvedProductPtr> usedProducts;
+    QMap<ResolvedProductPtr, ResolvedProduct::DependencyData> usedProducts;
     for (int i = dependencies.count() - 1; i >= 0; --i) {
         const ModuleLoaderResult::ProductInfo::Dependency &dependency = dependencies.at(i);
         QBS_CHECK(dependency.name.isEmpty() != dependency.productTypes.isEmpty());
@@ -878,7 +903,9 @@ QList<ResolvedProductPtr> ProjectResolver::getProductDependencies(const Resolved
                             || (dependency.limitToSubProject && !product->isInParentProject(p))) {
                         continue;
                     }
-                    usedProducts << p;
+                    ResolvedProduct::DependencyData depData;
+                    depData.moduleProperties = evaluateModuleValues(dependency.item, dependency.item->parent(), true);
+                    usedProducts.insert(p, depData);
                     ModuleLoaderResult::ProductInfo::Dependency newDependency;
                     newDependency.name = p->name;
                     newDependency.profile = p->profile;
@@ -892,7 +919,9 @@ QList<ResolvedProductPtr> ProjectResolver::getProductDependencies(const Resolved
                         || (dependency.limitToSubProject && !product->isInParentProject(p))) {
                     continue;
                 }
-                usedProducts << p;
+                ResolvedProduct::DependencyData depData;
+                depData.moduleProperties = evaluateModuleValues(dependency.item, dependency.item->parent(), true);
+                usedProducts.insert(p, depData);
                 ModuleLoaderResult::ProductInfo::Dependency newDependency;
                 newDependency.name = p->name;
                 newDependency.profile = p->profile;
@@ -918,7 +947,9 @@ QList<ResolvedProductPtr> ProjectResolver::getProductDependencies(const Resolved
                     throw e;
                 disabledDependency = true;
             }
-            usedProducts << usedProduct;
+            ResolvedProduct::DependencyData depData;
+            depData.moduleProperties = evaluateModuleValues(dependency.item, dependency.item->parent(), true);
+            usedProducts.insert(usedProduct, depData);
         }
     }
     return usedProducts;
@@ -991,9 +1022,10 @@ void ProjectResolver::resolveProductDependencies(const ProjectContext &projectCo
         Item *productItem = m_productItemMap.value(rproduct);
         const ModuleLoaderResult::ProductInfo &productInfo
                 = m_loadResult.productInfos.value(productItem);
-        foreach (const ResolvedProductPtr &usedProduct,
-                 getProductDependencies(rproduct, productInfo, disabledDependency)) {
+        const auto deps = getProductDependencies(rproduct, productInfo, disabledDependency);
+        foreach (const ResolvedProductPtr &usedProduct, deps.keys()) {
             rproduct->dependencies.insert(usedProduct);
+            rproduct->dependencyData.insert(usedProduct, deps.value(usedProduct));
         }
     }
 
@@ -1074,6 +1106,17 @@ QVariantMap ProjectResolver::evaluateModuleValues(Item *item, bool lookupPrototy
     return result;
 }
 
+QVariantMap ProjectResolver::evaluateModuleValues(Item *dependsItem, Item *item, bool lookupPrototype) const
+{
+    QVariantMap moduleValues;
+    foreach (const Item::Module &module, item->modules()) {
+        const QString fullName = module.name.toString();
+        moduleValues[fullName] = evaluateProperties(dependsItem, lookupPrototype);
+    }
+
+    return moduleValues;
+}
+
 QVariantMap ProjectResolver::evaluateProperties(Item *item, bool lookupPrototype) const
 {
     const QVariantMap tmplt;
@@ -1088,6 +1131,7 @@ QVariantMap ProjectResolver::evaluateProperties(Item *item, Item *propertiesCont
          it != propertiesContainer->properties().end(); ++it)
     {
         checkCancelation();
+        qDebug() << __FUNCTION__ << "seen prop" << it.key();
         switch (it.value()->type()) {
         case Value::ItemValueType:
         {

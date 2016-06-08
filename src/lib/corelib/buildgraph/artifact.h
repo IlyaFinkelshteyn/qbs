@@ -73,6 +73,8 @@ public:
     TransformerPtr transformer;
     PropertyMapPtr properties;
 
+    ResolvedProductConstPtr sourceProductPtr;
+
     enum ArtifactType
     {
         Unknown = 1,

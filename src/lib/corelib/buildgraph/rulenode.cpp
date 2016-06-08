@@ -167,8 +167,12 @@ ArtifactSet RuleNode::currentInputArtifacts() const
         if (m_rule->inputsFromDependencies.isEmpty())
             continue;
         for (Artifact * const a : filterByType<Artifact>(dep->buildData->nodes)) {
-            if (a->fileTags().matches(m_rule->inputsFromDependencies))
+            if (a->fileTags().matches(m_rule->inputsFromDependencies)) {
+                //dep->buildData->
+                //qDebug() << product->dependencies.value(dep).moduleProperties;
+                a->sourceProductPtr = dep;
                 s += a;
+            }
         }
     }
 

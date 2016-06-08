@@ -351,6 +351,12 @@ class ScriptEngine;
 class ResolvedProduct : public PersistentObject
 {
 public:
+    class DependencyData
+    {
+    public:
+        QVariantMap moduleProperties;
+    };
+
     static ResolvedProductPtr create() { return ResolvedProductPtr(new ResolvedProduct); }
 
     ~ResolvedProduct();
@@ -368,6 +374,7 @@ public:
     PropertyMapPtr moduleProperties;
     QSet<RulePtr> rules;
     QSet<ResolvedProductPtr> dependencies;
+    QMap<ResolvedProductConstPtr, DependencyData> dependencyData;
     QList<FileTaggerConstPtr> fileTaggers;
     QList<ResolvedModuleConstPtr> modules;
     QList<ResolvedTransformerPtr> transformers;

@@ -59,9 +59,11 @@ void ModuleProperties::init(QScriptValue artifactObject, const Artifact *artifac
     init(artifactObject, artifact, artifactType());
 }
 
-void ModuleProperties::init(QScriptValue objectWithProperties, const void *ptr,
+void ModuleProperties::init(QScriptValue objectWithProperties, const PersistentObject *ptr,
                             const QString &type)
 {
+//    if (type == QStringLiteral("artifact"))
+//        qDebug() << "init'ing "<<type<<" object";
     QScriptEngine * const engine = objectWithProperties.engine();
     objectWithProperties.setProperty(QLatin1String("moduleProperties"),
                                      engine->newFunction(ModuleProperties::js_moduleProperties, 2));

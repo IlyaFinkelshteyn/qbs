@@ -165,7 +165,7 @@ void RulesApplicator::doApply(const ArtifactSet &inputArtifacts, QScriptValue &p
     m_transformer->alwaysRun = m_rule->alwaysRun;
 
     // create the output artifacts from the set of input artifacts
-    Transformer::setupInputs(prepareScriptContext, inputArtifacts, m_rule->module->name);
+    m_transformer->setupInputs(prepareScriptContext, inputArtifacts, m_rule->module->name);
     copyProperty(QLatin1String("inputs"), prepareScriptContext, scope());
     copyProperty(QLatin1String("input"), prepareScriptContext, scope());
     copyProperty(QLatin1String("product"), prepareScriptContext, scope());

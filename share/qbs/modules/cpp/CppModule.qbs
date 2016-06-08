@@ -294,6 +294,8 @@ Module {
 
     property bool allowUnresolvedSymbols: false
 
+    property bool doSharts
+
     FileTagger {
         patterns: ["*.c"]
         fileTags: ["c"]

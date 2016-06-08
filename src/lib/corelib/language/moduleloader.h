@@ -47,6 +47,7 @@
 QT_BEGIN_NAMESPACE
 class QScriptContext;
 class QScriptEngine;
+class QScriptValue;
 QT_END_NAMESPACE
 
 namespace qbs {
@@ -72,6 +73,7 @@ struct ModuleLoaderResult
     {
         struct Dependency
         {
+            Item *item;
             FileTags productTypes;
             QString name;
             QString profile; // "*" <=> Match all profiles.

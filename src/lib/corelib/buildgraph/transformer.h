@@ -63,15 +63,15 @@ public:
     QHash<QString, PropertySet> propertiesRequestedFromArtifactInPrepareScript;
     bool alwaysRun;
 
-    static QScriptValue translateFileConfig(QScriptEngine *scriptEngine,
+    QScriptValue translateFileConfig(QScriptEngine *scriptEngine,
                                             Artifact *artifact,
                                             const QString &defaultModuleName);
-    static QScriptValue translateInOutputs(QScriptEngine *scriptEngine,
+    QScriptValue translateInOutputs(QScriptEngine *scriptEngine,
                                            const ArtifactSet &artifacts,
                                            const QString &defaultModuleName);
 
     ResolvedProductPtr product() const;
-    static void setupInputs(QScriptValue targetScriptValue, const ArtifactSet &inputs,
+    void setupInputs(QScriptValue targetScriptValue, const ArtifactSet &inputs,
             const QString &defaultModuleName);
     void setupInputs(QScriptValue targetScriptValue);
     void setupOutputs(QScriptEngine *scriptEngine, QScriptValue targetScriptValue);

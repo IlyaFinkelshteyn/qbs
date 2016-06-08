@@ -33,6 +33,7 @@
 
 #include "filetags.h"
 #include "itemtype.h"
+#include "language.h"
 #include "moduleloader.h"
 
 #include <logging/logger.h>
@@ -83,6 +84,7 @@ private:
     void resolveModules(const Item *item, ProjectContext *projectContext);
     void resolveModule(const QualifiedId &moduleName, Item *item, bool isProduct,
                        ProjectContext *projectContext);
+    void resolveDepends(Item *item, ProjectContext *projectContext);
     void resolveGroup(Item *item, ProjectContext *projectContext);
     void resolveRule(Item *item, ProjectContext *projectContext);
     void resolveRuleArtifact(const RulePtr &rule, Item *item);
@@ -95,6 +97,7 @@ private:
     void resolveProductDependencies(const ProjectContext &projectContext);
     void postProcess(const ResolvedProductPtr &product, ProjectContext *projectContext) const;
     void applyFileTaggers(const ResolvedProductPtr &product) const;
+    QVariantMap evaluateModuleValues(Item *dependsItem, Item *item, bool lookupPrototype = true) const;
     QVariantMap evaluateModuleValues(Item *item, bool lookupPrototype = true) const;
     QVariantMap evaluateProperties(Item *item, bool lookupPrototype = true) const;
     QVariantMap evaluateProperties(Item *item, Item *propertiesContainer, const QVariantMap &tmplt,
@@ -103,7 +106,7 @@ private:
     QString convertPathProperty(const QString &path, const QString &dirPath) const;
     QStringList convertPathListProperty(const QStringList &paths, const QString &dirPath) const;
     ProjectContext createProjectContext(ProjectContext *parentProjectContext) const;
-    QList<ResolvedProductPtr> getProductDependencies(const ResolvedProductConstPtr &product,
+    QMap<ResolvedProductPtr, ResolvedProduct::DependencyData> getProductDependencies(const ResolvedProductConstPtr &product,
             const ModuleLoaderResult::ProductInfo &productInfo, bool &disabledDependency);
     static void matchArtifactProperties(const ResolvedProductPtr &product,
             const QList<SourceArtifactPtr> &artifacts);

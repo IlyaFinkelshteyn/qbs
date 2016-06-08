@@ -382,6 +382,13 @@ CppModule {
         }
 
         prepare: {
+            if (inputs.staticlibrary) {
+                console.error("Linking application");
+                console.error(JSON.stringify(inputs.staticlibrary[0], undefined, 4));
+                console.error("cpp.doSharts=" + JSON.stringify(inputs.staticlibrary[0].moduleProperty("cpp", "doSharts")));
+                console.error("cpp.dynamicLibraries=" + JSON.stringify(inputs.staticlibrary[0].moduleProperty("cpp", "dynamicLibraries")));
+            }
+
             return Gcc.prepareLinker.apply(this, arguments);
         }
     }
