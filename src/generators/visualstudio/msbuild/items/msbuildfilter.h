@@ -1,7 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
+** Copyright (C) 2016 The Qt Company Ltd.
 ** Contact: http://www.qt.io/licensing
 **
 ** This file is part of Qbs.
@@ -29,55 +28,41 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#ifndef MSBUILDFILTER_H
+#define MSBUILDFILTER_H
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
-
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "../../generators/visualstudio/visualstudiogenerator.h"
+#include "../msbuilditem.h"
 
 namespace qbs {
 
-using namespace Internal;
+class IMSBuildItemGroup;
+class MSBuildFilterPrivate;
 
-ProjectGeneratorManager::~ProjectGeneratorManager()
+class MSBuildFilter : public MSBuildItem
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
-}
+    Q_OBJECT
+public:
+    explicit MSBuildFilter(IMSBuildItemGroup *parent = 0);
+    MSBuildFilter(const QString &name, const QList<QString> &extensions,
+                  IMSBuildItemGroup *parent = 0);
+    ~MSBuildFilter();
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
+    QUuid identifier() const;
+    void setIdentifier(const QUuid &identifier);
 
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ProjectGenerator>(new qbs::ClangCompilationDatabaseGenerator());
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
+    QList<QString> extensions() const;
+    void setExtensions(const QList<QString> &extensions);
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
+    bool parseFiles() const;
+    void setParseFiles(bool parseFiles);
 
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
+    bool sourceControlFiles() const;
+    void setSourceControlFiles(bool sourceControlFiles);
+
+private:
+    QScopedPointer<MSBuildFilterPrivate> d;
+};
 
 } // namespace qbs
+
+#endif // MSBUILDFILTER_H

@@ -1,7 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
+** Copyright (C) 2016 The Qt Company Ltd.
 ** Contact: http://www.qt.io/licensing
 **
 ** This file is part of Qbs.
@@ -29,55 +28,39 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#ifndef MSBUILDITEMGROUP_H
+#define MSBUILDITEMGROUP_H
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
-
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "../../generators/visualstudio/visualstudiogenerator.h"
+#include "imsbuildgroup.h"
+#include "imsbuildnode.h"
 
 namespace qbs {
 
-using namespace Internal;
+class MSBuildProject;
+class MSBuildItemGroupPrivate;
 
-ProjectGeneratorManager::~ProjectGeneratorManager()
+/*!
+ * \brief The MSBuildItemGroup class represents an MSBuild ItemGroup element.
+ *
+ * https://msdn.microsoft.com/en-us/library/646dk05y.aspx
+ */
+class MSBuildItemGroup : public IMSBuildItemGroup, public IMSBuildNode
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
-}
+    Q_OBJECT
+    Q_DISABLE_COPY(MSBuildItemGroup)
+public:
+    explicit MSBuildItemGroup(MSBuildProject *parent = 0);
+    ~MSBuildItemGroup();
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
+    QString label() const;
+    void setLabel(const QString &label);
 
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ProjectGenerator>(new qbs::ClangCompilationDatabaseGenerator());
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
+    void accept(IMSBuildNodeVisitor *visitor) const;
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
-
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
+private:
+    QScopedPointer<MSBuildItemGroupPrivate> d;
+};
 
 } // namespace qbs
+
+#endif // MSBUILDITEMGROUP_H

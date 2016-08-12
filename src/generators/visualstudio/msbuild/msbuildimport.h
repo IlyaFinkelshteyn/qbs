@@ -1,7 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
+** Copyright (C) 2016 The Qt Company Ltd.
 ** Contact: http://www.qt.io/licensing
 **
 ** This file is part of Qbs.
@@ -28,56 +27,44 @@
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
 ****************************************************************************/
+#ifndef MSBUILDIMPORT_H
+#define MSBUILDIMPORT_H
 
-#include "projectgeneratormanager.h"
-
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
-
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "../../generators/visualstudio/visualstudiogenerator.h"
+#include <QObject>
+#include "imsbuildnode.h"
 
 namespace qbs {
 
-using namespace Internal;
+class MSBuildImportGroup;
+class MSBuildImportPrivate;
+class MSBuildProject;
 
-ProjectGeneratorManager::~ProjectGeneratorManager()
+/*!
+ * \brief The MSBuildImport class represents an MSBuild Import element.
+ *
+ * https://msdn.microsoft.com/en-us/library/92x05xfs.aspx
+ */
+class MSBuildImport : public QObject, public IMSBuildNode
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
-}
+    Q_OBJECT
+    Q_DISABLE_COPY(MSBuildImport)
+public:
+    explicit MSBuildImport(MSBuildProject *parent = 0);
+    explicit MSBuildImport(MSBuildImportGroup *parent = 0);
+    virtual ~MSBuildImport();
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
+    QString project() const;
+    void setProject(const QString &project);
 
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ProjectGenerator>(new qbs::ClangCompilationDatabaseGenerator());
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
+    QString condition() const;
+    void setCondition(const QString &condition);
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
+    void accept(IMSBuildNodeVisitor *visitor) const;
 
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
+private:
+    QScopedPointer<MSBuildImportPrivate> d;
+};
 
 } // namespace qbs
+
+#endif // MSBUILDIMPORT_H

@@ -1,7 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
+** Copyright (C) 2016 The Qt Company Ltd.
 ** Contact: http://www.qt.io/licensing
 **
 ** This file is part of Qbs.
@@ -29,55 +28,37 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#ifndef VISUALSTUDIOSOLUTIONGLOBALSECTION_H
+#define VISUALSTUDIOSOLUTIONGLOBALSECTION_H
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
-
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "../../generators/visualstudio/visualstudiogenerator.h"
+#include <QObject>
+#include <QScopedPointer>
 
 namespace qbs {
 
-using namespace Internal;
+class VisualStudioSolutionGlobalSectionPrivate;
 
-ProjectGeneratorManager::~ProjectGeneratorManager()
+class VisualStudioSolutionGlobalSection : public QObject
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
-}
+    Q_OBJECT
+    Q_DISABLE_COPY(VisualStudioSolutionGlobalSection)
+public:
+    explicit VisualStudioSolutionGlobalSection(const QString &name, QObject *parent = 0);
+    ~VisualStudioSolutionGlobalSection();
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
+    QString name() const;
+    void setName(const QString &name);
 
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ProjectGenerator>(new qbs::ClangCompilationDatabaseGenerator());
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
+    bool isPost() const;
+    void setPost(bool post);
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
+    QVector<QPair<QString, QString> > properties() const;
+    void appendProperty(const QString &key, const QString &value);
 
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
+private:
+    QScopedPointer<VisualStudioSolutionGlobalSectionPrivate> d;
+};
 
 } // namespace qbs
+
+#endif // VISUALSTUDIOSOLUTIONGLOBALSECTION_H

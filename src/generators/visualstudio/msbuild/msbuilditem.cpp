@@ -1,7 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
+** Copyright (C) 2016 The Qt Company Ltd.
 ** Contact: http://www.qt.io/licensing
 **
 ** This file is part of Qbs.
@@ -29,55 +28,68 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#include "msbuilditem.h"
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
-
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "../../generators/visualstudio/visualstudiogenerator.h"
+#include "imsbuildnodevisitor.h"
+#include "msbuilditemdefinitiongroup.h"
+#include "msbuilditemgroup.h"
+#include "msbuilditemmetadata.h"
 
 namespace qbs {
 
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
+class MSBuildItemPrivate
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
+public:
+    QString name = QStringLiteral("Item");
+    QString include;
+};
+
+MSBuildItem::MSBuildItem(const QString &name, IMSBuildItemGroup *parent)
+    : QObject(parent)
+    , d(new MSBuildItemPrivate)
+{
+    setName(name);
+}
+
+MSBuildItem::~MSBuildItem()
+{
+}
+
+QString MSBuildItem::name() const
+{
+    return d->name;
+}
+
+void MSBuildItem::setName(const QString &name)
+{
+    d->name = name;
+}
+
+QString MSBuildItem::include() const
+{
+    return d->include;
+}
+
+void MSBuildItem::setInclude(const QString &include)
+{
+    d->include = include;
+}
+
+void MSBuildItem::appendProperty(const QString &name, const QVariant &value)
+{
+    new MSBuildItemMetadata(name, value, this);
+}
+
+void MSBuildItem::accept(IMSBuildNodeVisitor *visitor) const
+{
+    visitor->visitStart(this);
+
+    for (const auto &child : children()) {
+        if (MSBuildItemMetadata *itemMetadata = qobject_cast<MSBuildItemMetadata *>(child))
+            itemMetadata->accept(visitor);
     }
-}
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
-
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ProjectGenerator>(new qbs::ClangCompilationDatabaseGenerator());
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
-
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
-
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
+    visitor->visitEnd(this);
 }
 
 } // namespace qbs

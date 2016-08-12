@@ -1,7 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
+** Copyright (C) 2016 The Qt Company Ltd.
 ** Contact: http://www.qt.io/licensing
 **
 ** This file is part of Qbs.
@@ -29,55 +28,41 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#ifndef MSBUILDPROJECT_H
+#define MSBUILDPROJECT_H
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
-
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "../../generators/visualstudio/visualstudiogenerator.h"
+#include <QObject>
+#include "imsbuildnode.h"
 
 namespace qbs {
 
-using namespace Internal;
+class MSBuildProjectPrivate;
 
-ProjectGeneratorManager::~ProjectGeneratorManager()
+/*!
+ * \brief The MSBuildProject class represents an MSBuild Project element.
+ *
+ * https://msdn.microsoft.com/en-us/library/bcxfsh87.aspx
+ */
+class MSBuildProject : public QObject, public IMSBuildNode
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
-}
+    Q_OBJECT
+    Q_DISABLE_COPY(MSBuildProject)
+public:
+    explicit MSBuildProject(QObject *parent = 0);
+    ~MSBuildProject();
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
+    QString defaultTargets() const;
+    void setDefaultTargets(const QString &defaultTargets);
 
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ProjectGenerator>(new qbs::ClangCompilationDatabaseGenerator());
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
+    QString toolsVersion() const;
+    void setToolsVersion(const QString &toolsVersion);
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
+    void accept(IMSBuildNodeVisitor *visitor) const;
 
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
+private:
+    QScopedPointer<MSBuildProjectPrivate> d;
+};
 
 } // namespace qbs
+
+#endif // MSBUILDPROJECT_H

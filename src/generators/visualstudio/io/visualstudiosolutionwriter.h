@@ -1,7 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
+** Copyright (C) 2016 The Qt Company Ltd.
 ** Contact: http://www.qt.io/licensing
 **
 ** This file is part of Qbs.
@@ -29,55 +28,37 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#ifndef VISUALSTUDIOSOLUTIONWRITER_H
+#define VISUALSTUDIOSOLUTIONWRITER_H
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
-
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "../../generators/visualstudio/visualstudiogenerator.h"
+#include <QIODevice>
+#include <QScopedPointer>
 
 namespace qbs {
 
-using namespace Internal;
+namespace Internal { class VisualStudioVersionInfo; }
 
-ProjectGeneratorManager::~ProjectGeneratorManager()
-{
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
-}
+class VisualStudioSolution;
+class VisualStudioSolutionWriterPrivate;
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
+class VisualStudioSolutionWriter
 {
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
+    Q_DISABLE_COPY(VisualStudioSolutionWriter)
+public:
+    explicit VisualStudioSolutionWriter(QIODevice *device);
+    ~VisualStudioSolutionWriter();
 
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ProjectGenerator>(new qbs::ClangCompilationDatabaseGenerator());
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
+    QString projectBaseDirectory() const;
+    void setProjectBaseDirectory(const QString &dir);
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
+    bool write(const VisualStudioSolution *solution);
 
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
+private:
+    void addDefaultGlobalSections();
+
+    QScopedPointer<VisualStudioSolutionWriterPrivate> d;
+};
 
 } // namespace qbs
+
+#endif // VISUALSTUDIOSOLUTIONWRITER_H

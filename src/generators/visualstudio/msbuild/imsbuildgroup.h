@@ -1,7 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
+** Copyright (C) 2016 The Qt Company Ltd.
 ** Contact: http://www.qt.io/licensing
 **
 ** This file is part of Qbs.
@@ -29,55 +28,38 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#ifndef IMSBUILDGROUP_H
+#define IMSBUILDGROUP_H
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
-
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "../../generators/visualstudio/visualstudiogenerator.h"
+#include <QObject>
+#include <QScopedPointer>
 
 namespace qbs {
 
-using namespace Internal;
+class MSBuildProject;
+class IMSBuildGroupPrivate;
 
-ProjectGeneratorManager::~ProjectGeneratorManager()
+class IMSBuildGroup : public QObject
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
-}
+    Q_OBJECT
+public:
+    explicit IMSBuildGroup(MSBuildProject *parent = 0);
+    virtual ~IMSBuildGroup();
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
+    QString condition() const;
+    void setCondition(const QString &condition);
 
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ProjectGenerator>(new qbs::ClangCompilationDatabaseGenerator());
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
+private:
+    QScopedPointer<IMSBuildGroupPrivate> d;
+};
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
+class IMSBuildItemGroup : public IMSBuildGroup
 {
-    return instance()->m_generators.keys();
-}
-
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
+    Q_OBJECT
+public:
+    explicit IMSBuildItemGroup(MSBuildProject *parent = 0);
+};
 
 } // namespace qbs
+
+#endif // IMSBUILDGROUP_H

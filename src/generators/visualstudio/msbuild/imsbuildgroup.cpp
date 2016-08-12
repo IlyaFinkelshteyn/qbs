@@ -1,7 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
+** Copyright (C) 2016 The Qt Company Ltd.
 ** Contact: http://www.qt.io/licensing
 **
 ** This file is part of Qbs.
@@ -29,55 +28,40 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
-
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
-
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "../../generators/visualstudio/visualstudiogenerator.h"
+#include "imsbuildgroup.h"
+#include "msbuildproject.h"
 
 namespace qbs {
 
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
+class IMSBuildGroupPrivate
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
+public:
+    QString condition;
+};
+
+IMSBuildGroup::IMSBuildGroup(MSBuildProject *parent)
+    : QObject(parent)
+    , d(new IMSBuildGroupPrivate)
+{
 }
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
+IMSBuildGroup::~IMSBuildGroup()
 {
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
 }
 
-ProjectGeneratorManager::ProjectGeneratorManager()
+QString IMSBuildGroup::condition() const
 {
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ProjectGenerator>(new qbs::ClangCompilationDatabaseGenerator());
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
+    return d->condition;
 }
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
+void IMSBuildGroup::setCondition(const QString &condition)
 {
-    return instance()->m_generators.keys();
+    d->condition = condition;
 }
 
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
+IMSBuildItemGroup::IMSBuildItemGroup(MSBuildProject *parent)
+    : IMSBuildGroup(parent)
 {
-    return instance()->m_generators.value(generatorName);
 }
 
 } // namespace qbs

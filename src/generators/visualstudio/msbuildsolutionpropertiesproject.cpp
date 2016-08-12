@@ -1,7 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
+** Copyright (C) 2016 The Qt Company Ltd.
 ** Contact: http://www.qt.io/licensing
 **
 ** This file is part of Qbs.
@@ -29,55 +28,35 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#include "msbuildsolutionpropertiesproject.h"
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
+#include "msbuild/msbuildpropertygroup.h"
 
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
+#include <tools/pathutils.h>
 
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "../../generators/visualstudio/visualstudiogenerator.h"
+#include <QFileInfo>
 
 namespace qbs {
 
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
+MSBuildSolutionPropertiesProject::MSBuildSolutionPropertiesProject(
+        const Internal::VisualStudioVersionInfo &versionInfo,
+        const GeneratableProject &project,
+        const QFileInfo &qbsExecutable)
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
-}
+    setDefaultTargets(QStringLiteral("Build"));
+    setToolsVersion(versionInfo.toolsVersion());
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
+    auto group = new MSBuildPropertyGroup(this);
+    group->setLabel(QStringLiteral("UserMacros"));
 
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ProjectGenerator>(new qbs::ClangCompilationDatabaseGenerator());
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
+    static const auto win = Internal::HostOsInfo::HostOsWindows;
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
-
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
+    group->appendProperty(QStringLiteral("QbsExecutableDir"),
+                          Internal::PathUtils::toNativeSeparators(qbsExecutable.path(), win)
+                          + Internal::HostOsInfo::pathSeparator(win));
+    group->appendProperty(QStringLiteral("QbsProjectDir"),
+                          Internal::PathUtils::toNativeSeparators(project.filePath().path(), win)
+                          + Internal::HostOsInfo::pathSeparator(win));
 }
 
 } // namespace qbs

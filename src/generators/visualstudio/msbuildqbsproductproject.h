@@ -1,7 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
+** Copyright (C) 2016 The Qt Company Ltd.
 ** Contact: http://www.qt.io/licensing
 **
 ** This file is part of Qbs.
@@ -29,55 +28,42 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#ifndef MSBUILDQBSPRODUCTPROJECT_H
+#define MSBUILDQBSPRODUCTPROJECT_H
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
+#include "msbuildtargetproject.h"
 
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "../../generators/visualstudio/visualstudiogenerator.h"
+#include <generators/generatordata.h>
+#include <tools/visualstudioversioninfo.h>
 
 namespace qbs {
 
-using namespace Internal;
+class MSBuildImportGroup;
+class MSBuildProperty;
 
-ProjectGeneratorManager::~ProjectGeneratorManager()
-{
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
-}
+class VisualStudioGenerator;
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
+class MSBuildQbsProductProject : public MSBuildTargetProject
 {
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
+    Q_OBJECT
+    Q_DISABLE_COPY(MSBuildQbsProductProject)
+public:
+    MSBuildQbsProductProject(const GeneratableProject &project,
+                             const GeneratableProductData &product,
+                             const Internal::VisualStudioVersionInfo &versionInfo,
+                             VisualStudioGenerator *parent = 0);
 
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ProjectGenerator>(new qbs::ClangCompilationDatabaseGenerator());
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
+private:
+    typedef QHash<QString, QSet<Project>> ProjectConfigurations;
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
-
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
+    void addConfiguration(const GeneratableProject &project, const Project &buildTask,
+                          const ProductData &productData,
+                          const QStringList &buildConfigurationCommandLine);
+    void addItemDefGroup(const Project &project,
+                         const ProductData &productData);
+    void addFiles(const GeneratableProject &project, const GeneratableProductData &product);
+};
 
 } // namespace qbs
+
+#endif // MSBUILDQBSPRODUCTPROJECT_H

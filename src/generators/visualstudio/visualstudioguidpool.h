@@ -1,7 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
+** Copyright (C) 2016 The Qt Company Ltd.
 ** Contact: http://www.qt.io/licensing
 **
 ** This file is part of Qbs.
@@ -29,55 +28,35 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#ifndef VISUALSTUDIOGUIDPOOL_H
+#define VISUALSTUDIOGUIDPOOL_H
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
-
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "../../generators/visualstudio/visualstudiogenerator.h"
+#include <QObject>
+#include <QScopedPointer>
+#include <QUuid>
 
 namespace qbs {
 
-using namespace Internal;
+class VisualStudioGuidPoolPrivate;
 
-ProjectGeneratorManager::~ProjectGeneratorManager()
+/*!
+ * Provides persistent storage for GUIDs related to Visual Studio project file nodes.
+ * These are stored on disk separately from project files and so allow projects to be
+ * regenerated while retaining the same GUIDs. This helps avoid unnecessary project
+ * reloads in Visual Studio, and helps ease source control usage.
+ */
+class VisualStudioGuidPool
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
-}
+public:
+    explicit VisualStudioGuidPool(const QString &storeFilePath);
+    ~VisualStudioGuidPool();
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
-{
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
+    QUuid drawProductGuid(const QString &productName);
 
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ProjectGenerator>(new qbs::ClangCompilationDatabaseGenerator());
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
-}
-
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
-{
-    return instance()->m_generators.keys();
-}
-
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
-}
+private:
+    QScopedPointer<VisualStudioGuidPoolPrivate> d;
+};
 
 } // namespace qbs
+
+#endif // VISUALSTUDIOGUIDPOOL_H

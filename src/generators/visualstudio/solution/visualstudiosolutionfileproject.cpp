@@ -1,7 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
+** Copyright (C) 2016 The Qt Company Ltd.
 ** Contact: http://www.qt.io/licensing
 **
 ** This file is part of Qbs.
@@ -29,55 +28,51 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
+#include "visualstudiosolutionfileproject.h"
 
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
-
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "../../generators/visualstudio/visualstudiogenerator.h"
+#include <QFileInfo>
 
 namespace qbs {
 
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
+class VisualStudioSolutionFileProjectPrivate
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
-    }
+public:
+    QString filePath;
+};
+
+VisualStudioSolutionFileProject::VisualStudioSolutionFileProject(const QString &filePath,
+                                                                 QObject *parent)
+    : IVisualStudioSolutionProject(parent)
+    , d(new VisualStudioSolutionFileProjectPrivate)
+{
+    setFilePath(filePath);
 }
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
+VisualStudioSolutionFileProject::~VisualStudioSolutionFileProject()
 {
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
 }
 
-ProjectGeneratorManager::ProjectGeneratorManager()
+QString VisualStudioSolutionFileProject::name() const
 {
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ProjectGenerator>(new qbs::ClangCompilationDatabaseGenerator());
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
-    }
+    const auto projectName = IVisualStudioSolutionProject::name();
+    if (projectName.isEmpty())
+        return QFileInfo(filePath()).baseName();
+    return projectName;
 }
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
+QUuid VisualStudioSolutionFileProject::projectTypeGuid() const
 {
-    return instance()->m_generators.keys();
+    return QStringLiteral("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}"); // C++
 }
 
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
+QString VisualStudioSolutionFileProject::filePath() const
 {
-    return instance()->m_generators.value(generatorName);
+    return d->filePath;
+}
+
+void VisualStudioSolutionFileProject::setFilePath(const QString &filePath)
+{
+    d->filePath = filePath;
 }
 
 } // namespace qbs

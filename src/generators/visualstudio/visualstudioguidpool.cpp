@@ -1,7 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
-** Copyright (C) 2015 Jake Petroules.
+** Copyright (C) 2016 The Qt Company Ltd.
 ** Contact: http://www.qt.io/licensing
 **
 ** This file is part of Qbs.
@@ -29,55 +28,59 @@
 **
 ****************************************************************************/
 
-#include "projectgeneratormanager.h"
-
-#include <logging/logger.h>
-#include <logging/translator.h>
-#include <tools/hostosinfo.h>
-
-#include <QCoreApplication>
-#include <QDirIterator>
-#include <QLibrary>
-
-#include "generators/clangcompilationdb/clangcompilationdbgenerator.h"
-#include "../../generators/visualstudio/visualstudiogenerator.h"
+#include "visualstudioguidpool.h"
+#include <tools/filesaver.h>
+#include <QFile>
+#include <QJsonDocument>
+#include <QMap>
+#include <QVariant>
 
 namespace qbs {
 
-using namespace Internal;
-
-ProjectGeneratorManager::~ProjectGeneratorManager()
+class VisualStudioGuidPoolPrivate
 {
-    foreach (QLibrary * const lib, m_libs) {
-        lib->unload();
-        delete lib;
+public:
+    QString storeFilePath;
+    QMap<QString, QUuid> productGuids;
+};
+
+VisualStudioGuidPool::VisualStudioGuidPool(const QString &storeFilePath)
+    : d(new VisualStudioGuidPoolPrivate)
+{
+    // Read any existing GUIDs from the on-disk store
+    QFile file(d->storeFilePath = storeFilePath);
+    if (file.exists() && file.open(QIODevice::ReadOnly)) {
+        const auto data = QJsonDocument::fromJson(file.readAll()).toVariant().toMap();
+
+        QMapIterator<QString, QVariant> it = data;
+        while (it.hasNext()) {
+            it.next();
+            d->productGuids.insert(it.key(), QUuid(it.value().toString()));
+        }
     }
 }
 
-ProjectGeneratorManager *ProjectGeneratorManager::instance()
+VisualStudioGuidPool::~VisualStudioGuidPool()
 {
-    static ProjectGeneratorManager generatorPlugin;
-    return &generatorPlugin;
-}
+    Internal::FileSaver file(d->storeFilePath);
+    if (file.open()) {
+        QVariantMap productData;
+        QMapIterator<QString, QUuid> it(d->productGuids);
+        while (it.hasNext()) {
+            it.next();
+            productData.insert(it.key(), it.value().toString());
+        }
 
-ProjectGeneratorManager::ProjectGeneratorManager()
-{
-    QVector<QSharedPointer<ProjectGenerator> > generators;
-    generators << QSharedPointer<ProjectGenerator>(new qbs::ClangCompilationDatabaseGenerator());
-    generators << qbs::VisualStudioGenerator::createGeneratorList();
-    foreach (QSharedPointer<ProjectGenerator> generator, generators) {
-        m_generators[generator->generatorName()] = generator;
+        file.write(QJsonDocument::fromVariant(productData).toJson());
+        file.commit();
     }
 }
 
-QStringList ProjectGeneratorManager::loadedGeneratorNames()
+QUuid VisualStudioGuidPool::drawProductGuid(const QString &productName)
 {
-    return instance()->m_generators.keys();
-}
-
-QSharedPointer<ProjectGenerator> ProjectGeneratorManager::findGenerator(const QString &generatorName)
-{
-    return instance()->m_generators.value(generatorName);
+    if (!d->productGuids.contains(productName))
+        d->productGuids.insert(productName, QUuid::createUuid());
+    return d->productGuids.value(productName);
 }
 
 } // namespace qbs
