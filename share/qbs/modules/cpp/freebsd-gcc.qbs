@@ -1,9 +1,9 @@
 /****************************************************************************
 **
-** Copyright (C) 2015 The Qt Company Ltd.
+** Copyright (C) 2016 The Qt Company Ltd.
 ** Contact: http://www.qt.io/licensing
 **
-** This file is part of Qbs.
+** This file is part of the Qt Build Suite.
 **
 ** Commercial License Usage
 ** Licensees holding valid commercial Qt licenses may use this file in
@@ -31,6 +31,11 @@
 import qbs 1.0
 
 UnixGCC {
-    condition: qbs.targetOS && !qbs.targetOS.containsAny(['darwin', 'freebsd', 'linux']) &&
-               qbs.toolchain && qbs.toolchain.contains('gcc') && !qbs.toolchain.contains('mingw')
+    condition: qbs.targetOS && qbs.targetOS.contains('freebsd') &&
+               qbs.toolchain && qbs.toolchain.contains('gcc')
+
+    targetSystem: "freebsd"
+
+    sharedIncludePaths: ["/usr/local/include"]
+    sharedLibraryPaths: ["/usr/local/lib"]
 }
