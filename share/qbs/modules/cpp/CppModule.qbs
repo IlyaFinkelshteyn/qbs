@@ -130,8 +130,10 @@ Module {
 
     property pathList includePaths
     property pathList systemIncludePaths
+    property pathList sharedIncludePaths
     property pathList compilerIncludePaths
     property pathList libraryPaths
+    property pathList sharedLibraryPaths
     property pathList compilerLibraryPaths
     property pathList frameworkPaths
     property pathList systemFrameworkPaths

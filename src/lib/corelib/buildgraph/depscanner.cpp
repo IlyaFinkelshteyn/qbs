@@ -63,14 +63,19 @@ static void collectCppIncludePaths(const QVariantMap &modules, QSet<QString> *co
     QMapIterator<QString, QVariant> iterator(modules);
     while (iterator.hasNext()) {
         iterator.next();
+        const auto properties = iterator.value().toMap();
         if (iterator.key() == QLatin1String("cpp")) {
-            QVariant includePathsVariant =
-                    iterator.value().toMap().value(QLatin1String("includePaths"));
+            QVariant includePathsVariant = properties.value(QLatin1String("includePaths"));
             if (includePathsVariant.isValid())
                 collectedPaths->unite(QSet<QString>::fromList(includePathsVariant.toStringList()));
+            QVariant sharedIncludePathsVariant =
+                    properties.value(QLatin1String("sharedIncludePaths"));
+            if (sharedIncludePathsVariant.isValid())
+                collectedPaths->unite(QSet<QString>::fromList(
+                                          sharedIncludePathsVariant.toStringList()));
         } else {
-            collectCppIncludePaths(iterator.value().toMap().value(QLatin1String("modules")).toMap(),
-                                collectedPaths);
+            collectCppIncludePaths(properties.value(QLatin1String("modules")).toMap(),
+                                   collectedPaths);
         }
     }
 }

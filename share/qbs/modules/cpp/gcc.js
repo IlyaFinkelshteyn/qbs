@@ -102,6 +102,7 @@ function escapeLinkerFlags(product, inputs, linkerFlags, allowEscape) {
 
 function linkerFlags(project, product, inputs, output) {
     var libraryPaths = ModUtils.moduleProperty(product, 'libraryPaths');
+    var sharedLibraryPaths = ModUtils.moduleProperty(product, "sharedLibraryPaths");
     var dynamicLibraries = ModUtils.moduleProperty(product, "dynamicLibraries");
     var staticLibraries = ModUtils.modulePropertiesFromArtifacts(product, inputs.staticlibrary, 'cpp', 'staticLibraries');
     var frameworks = ModUtils.moduleProperty(product, 'frameworks');
@@ -227,8 +228,12 @@ function linkerFlags(project, product, inputs, output) {
         args.push("-stdlib=" + stdlib);
 
     // Flags for library search paths
+    var allLibraryPaths = [];
     if (libraryPaths)
-        args = args.concat([].uniqueConcat(libraryPaths).map(function(path) { return '-L' + path }));
+        allLibraryPaths = allLibraryPaths.uniqueConcat(libraryPaths);
+    if (sharedLibraryPaths)
+        allLibraryPaths = allLibraryPaths.uniqueConcat(sharedLibraryPaths);
+    args = args.concat(allLibraryPaths.map(function(path) { return '-L' + path }));
 
     var linkerScripts = inputs.linkerscript
             ? inputs.linkerscript.map(function(a) { return a.filePath; }) : [];
@@ -384,6 +389,7 @@ function effectiveCompilerInfo(toolchain, input, output) {
 function compilerFlags(product, input, output) {
     var includePaths = ModUtils.moduleProperty(input, 'includePaths');
     var systemIncludePaths = ModUtils.moduleProperty(input, 'systemIncludePaths');
+    var sharedIncludePaths = ModUtils.moduleProperty(input, "sharedIncludePaths");
 
     var platformDefines = ModUtils.moduleProperty(input, 'platformDefines');
     var defines = ModUtils.moduleProperty(input, 'defines');
@@ -563,8 +569,13 @@ function compilerFlags(product, input, output) {
     args = args.concat(allDefines.map(function(define) { return '-D' + define }));
     if (includePaths)
         args = args.concat([].uniqueConcat(includePaths).map(function(path) { return '-I' + path }));
+
+    var allSystemIncludePaths = [];
     if (systemIncludePaths)
-        args = args.concat([].uniqueConcat(systemIncludePaths).map(function(path) { return '-isystem' + path }));
+        allSystemIncludePaths = allSystemIncludePaths.uniqueConcat(systemIncludePaths);
+    if (sharedIncludePaths)
+        allSystemIncludePaths = allSystemIncludePaths.uniqueConcat(sharedIncludePaths);
+    args = args.concat(allSystemIncludePaths.map(function(path) { return '-isystem' + path }));
 
     var minimumWindowsVersion = ModUtils.moduleProperty(input, "minimumWindowsVersion");
     if (minimumWindowsVersion && product.moduleProperty("qbs", "targetOS").contains("windows")) {
@@ -650,6 +661,7 @@ function prepareAssembler(project, product, inputs, outputs, input, output) {
 
     var includePaths = ModUtils.moduleProperty(input, 'includePaths');
     var systemIncludePaths = ModUtils.moduleProperty(input, 'systemIncludePaths');
+    var sharedIncludePaths = ModUtils.moduleProperty(input, "sharedIncludePaths");
 
     var args = [];
     var arch = product.moduleProperty("cpp", "targetArch");
@@ -681,6 +693,8 @@ function prepareAssembler(project, product, inputs, outputs, input, output) {
         allIncludePaths = allIncludePaths.uniqueConcat(systemIncludePaths);
     if (includePaths)
         allIncludePaths = allIncludePaths.uniqueConcat(includePaths);
+    if (sharedIncludePaths)
+        allIncludePaths = allIncludePaths.uniqueConcat(sharedIncludePaths);
     args = args.concat(allIncludePaths.map(function(path) { return '-I' + path }));
 
     args.push("-o", output.filePath);
