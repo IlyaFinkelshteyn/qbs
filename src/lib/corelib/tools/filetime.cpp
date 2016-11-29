@@ -52,8 +52,11 @@ namespace qbs {
 namespace Internal {
 
 #ifdef Q_OS_WIN
+#ifndef QBS_COMPILETIMEASSERT
+#define QBS_COMPILETIMEASSERT
 template<bool> struct CompileTimeAssert;
 template<> struct CompileTimeAssert<true> {};
+#endif // QBS_COMPILETIMEASSERT
 #endif
 
 FileTime::FileTime()

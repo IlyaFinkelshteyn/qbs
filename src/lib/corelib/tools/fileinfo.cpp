@@ -254,8 +254,11 @@ bool FileInfo::fileExists(const QFileInfo &fi)
 
 #define z(x) reinterpret_cast<WIN32_FILE_ATTRIBUTE_DATA*>(const_cast<FileInfo::InternalStatType*>(&x))
 
+#ifndef QBS_COMPILETIMEASSERT
+#define QBS_COMPILETIMEASSERT
 template<bool> struct CompileTimeAssert;
 template<> struct CompileTimeAssert<true> {};
+#endif // QBS_COMPILETIMEASSERT
 
 FileInfo::FileInfo(const QString &fileName)
 {

@@ -46,7 +46,8 @@
 #include <tools/toolchains.h>
 #include <tools/version.h>
 
-#if defined(Q_OS_MACOS) || defined(Q_OS_OSX)
+#if !defined(QBS_BOOTSTRAPPED) && (defined(Q_OS_MACOS) || defined(Q_OS_OSX))
+#define HAVE_APPLE_CODESIGNUTILS
 #include <tools/applecodesignutils.h>
 #endif
 
@@ -214,7 +215,7 @@ QScriptValue UtilitiesExtension::js_rfc1034identifier(QScriptContext *context,
 QScriptValue UtilitiesExtension::js_smimeMessageContent(QScriptContext *context,
                                                         QScriptEngine *engine)
 {
-#if !defined(Q_OS_MACOS) && !defined(Q_OS_OSX)
+#ifndef HAVE_APPLE_CODESIGNUTILS
     Q_UNUSED(engine);
     return context->throwError(QScriptContext::UnknownError,
         QLatin1String("smimeMessageContent is not available on this platform"));
@@ -238,7 +239,7 @@ QScriptValue UtilitiesExtension::js_smimeMessageContent(QScriptContext *context,
 QScriptValue UtilitiesExtension::js_certificateInfo(QScriptContext *context,
                                                     QScriptEngine *engine)
 {
-#if !defined(Q_OS_MACOS) && !defined(Q_OS_OSX)
+#ifndef HAVE_APPLE_CODESIGNUTILS
     Q_UNUSED(engine);
     return context->throwError(QScriptContext::UnknownError,
         QLatin1String("certificateInfo is not available on this platform"));
@@ -254,7 +255,7 @@ QScriptValue UtilitiesExtension::js_certificateInfo(QScriptContext *context,
 QScriptValue UtilitiesExtension::js_signingIdentities(QScriptContext *context,
                                                       QScriptEngine *engine)
 {
-#if !defined(Q_OS_MACOS) && !defined(Q_OS_OSX)
+#ifndef HAVE_APPLE_CODESIGNUTILS
     Q_UNUSED(engine);
     return context->throwError(QScriptContext::UnknownError,
         QLatin1String("signingIdentities is not available on this platform"));

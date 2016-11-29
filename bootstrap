@@ -1,0 +1,207 @@
+#!/bin/bash
+
+#############################################################################
+##
+## Copyright (C) 2016 The Qt Company Ltd.
+## Contact: https://www.qt.io/licensing/
+##
+## This file is part of Qbs.
+##
+## $QT_BEGIN_LICENSE:LGPL$
+## Commercial License Usage
+## Licensees holding valid commercial Qt licenses may use this file in
+## accordance with the commercial license agreement provided with the
+## Software or, alternatively, in accordance with the terms contained in
+## a written agreement between you and The Qt Company. For licensing terms
+## and conditions see https://www.qt.io/terms-conditions. For further
+## information use the contact form at https://www.qt.io/contact-us.
+##
+## GNU Lesser General Public License Usage
+## Alternatively, this file may be used under the terms of the GNU Lesser
+## General Public License version 3 as published by the Free Software
+## Foundation and appearing in the file LICENSE.LGPL3 included in the
+## packaging of this file. Please review the following information to
+## ensure the GNU Lesser General Public License version 3 requirements
+## will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
+##
+## GNU General Public License Usage
+## Alternatively, this file may be used under the terms of the GNU
+## General Public License version 2.0 or (at your option) the GNU General
+## Public license version 3 or any later version approved by the KDE Free
+## Qt Foundation. The licenses are as published by the Free Software
+## Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
+## included in the packaging of this file. Please review the following
+## information to ensure the GNU General Public License requirements will
+## be met: https://www.gnu.org/licenses/gpl-2.0.html and
+## https://www.gnu.org/licenses/gpl-3.0.html.
+##
+## $QT_END_LICENSE$
+##
+#############################################################################
+
+set -eu
+cd "$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+QTDIR=$(qmake -query QT_INSTALL_PREFIX 2> /dev/null || true)
+QBS_BUILD_VARIANT=release
+QBS_INSTALL_ROOT=build
+
+for i in "$@"; do
+    case $i in
+    -h|--help)
+        echo "usage: ./bootstrap [Qt.core.prefixPath:<QTDIR>] [property:value] ..."
+        echo
+        echo "Performs a bootstrapped build of Qbs."
+        echo
+        echo "By default, the bootstrapped installation will be placed in <SRCDIR>/build,"
+        echo "but this can be overridden by specifying the qbs.installRoot:<DIR> argument."
+        echo
+        echo "Qt.core.prefixPath:<QTDIR> must be set to a path to a prebuilt Qt installation,"
+        echo "unless qmake is in the PATH. Required modules include QtCore and QtScript."
+        exit 2
+        ;;
+    qbs.buildVariant:*)
+        QBS_BUILD_VARIANT=${i#*:}
+        shift
+        ;;
+    qbs.installRoot:*)
+        QBS_INSTALL_ROOT=${i#*:}
+        shift
+        ;;
+    Qt.core.prefixPath:*)
+        QTDIR=${i#*:}
+        shift
+        ;;
+    *:*)
+        # forward other properties directly to bootstrapped qbs
+        # we exclude all other argument forms because we don't want users
+        # to accidentally or intentionally build multiple configurations
+        ;;
+    *)
+        echo "error: unknown option '$i'" >&2
+        exit 1
+        ;;
+    esac
+done
+
+# Build Qt-related paths and compiler and linker flags
+if [ ! -d "$QTDIR" ] || [ ! -x "$QTDIR/bin/qmake" ]; then
+    echo "error: could not find Qt, did you forget to specify Qt.core.prefixPath?" >&2
+    exit 1
+fi
+
+QMAKE=$QTDIR/bin/qmake
+QT_HOST_BINS=$($QMAKE -query QT_HOST_BINS)
+QT_HOST_DATA=$($QMAKE -query QT_HOST_DATA)
+QT_INSTALL_HEADERS=$($QMAKE -query QT_INSTALL_HEADERS)
+QT_INSTALL_LIBS=$($QMAKE -query QT_INSTALL_LIBS)
+QT_MKSPEC=$($QMAKE -query QMAKE_XSPEC)
+
+if grep -q "\\bqt_framework\\b" "$QT_HOST_DATA/mkspecs/qconfig.pri"; then
+    cflags+=("-F$QT_INSTALL_LIBS")
+    lflags+=(-framework QtCore -framework QtScript)
+    # Relocatability is not relevant for the bootstrapped binary
+    lflags+=(-Xlinker -rpath "$QT_INSTALL_LIBS")
+else
+    lflags+=(-lQt5Core -lQt5Script)
+fi
+
+cflags+=("-I$QT_INSTALL_HEADERS" "-DQT_CORE_LIB" "-DQT_SCRIPT_LIB")
+lflags+=("-L$QT_INSTALL_LIBS")
+mocflags+=("-DQT_CORE_LIB" "-DQT_SCRIPT_LIB")
+
+# QTBUG-34593, QTBUG-52687
+if [[ "$QT_MKSPEC" = *macx* ]]; then
+    mocflags+=(-DQ_OS_DARWIN -DQ_OS_MAC)
+fi
+
+tmpdir=$(mktemp -d "/tmp/qbs.XXXXXXXXXX")
+
+# Collect qbs source files and include directories
+source_paths=(src/app/qbs src/app/shared/logging src/lib/corelib src/plugins)
+exclude_patterns=(\
+    '*/changeset.*' '*/projectfileupdater.*' '*/qmljsrewriter.*' \
+    '*/domxml.*' '*/propertylist*' \
+    '*/applecodesignutils.*' \
+    '*/tst_*' \
+)
+for p in "${exclude_patterns[@]}"; do exclusion_args+=(-not -path "$p"); done
+header_files=($(find "${source_paths[@]}" -type f -name '*.h' "${exclusion_args[@]}"))
+source_files=($(find "${source_paths[@]}" -type f -name '*.cpp' "${exclusion_args[@]}"))
+include_dirs=("$tmpdir" . src $(find "${source_paths[@]}" -type d "${exclusion_args[@]}"))
+
+jsextensions=src/lib/corelib/jsextensions
+if [[ "$QT_MKSPEC" = *macx* ]]; then
+    header_files+=($jsextensions/propertylistutils.h)
+    objc_source_files+=($jsextensions/propertylist.mm $jsextensions/propertylistutils.mm)
+    lflags+=(-framework CoreFoundation -framework Foundation)
+else
+    source_files+=($jsextensions/propertylist.cpp)
+fi
+
+# Build compiler and linker flag lists
+qbsversion=$(grep -o '\".*\"' qbs-resources/imports/QbsFunctions/functions.js)
+defines=(\
+    "#define QBS_VERSION $qbsversion" \
+    "#define SRCDIR \"$PWD\"" \
+    "#define QBS_BOOTSTRAPPED" \
+    "#define QBS_STATIC_LIB" \
+    "#define CPLUSPLUS_NO_PARSER" \
+    "#define UNICODE"
+)
+defines_file=$tmpdir/qbs-defines.h
+for def in "${defines[@]}"; do echo "$def" >> "$defines_file"; done
+
+cflags+=(-pipe -std=c++11 -fPIC -include "$defines_file")
+lflags+=(-o "$tmpdir/qbs")
+
+for dir in "${include_dirs[@]}"; do cflags+=("-I$dir"); done
+
+# Run moc
+all_files=("${header_files[@]}" "${source_files[@]}")
+if [[ "$QT_MKSPEC" = *macx* ]]; then
+    all_files+=("${objc_source_files[@]}")
+fi
+for src in "${all_files[@]}"; do
+    if grep -q '#include.*\.moc"' "$src"; then
+        fname=$(basename "$src")
+        for ext in .cpp .mm; do fname=$(basename "$fname" "$ext"); done
+        fname="$fname.moc"
+    elif grep -q "^ *\bQ_OBJECT\b" "$src"; then
+        fname=moc_$(basename "$src" .h).cpp
+        source_files+=("$tmpdir/$fname")
+    else
+        continue
+    fi
+    "$QT_HOST_BINS/moc" "${mocflags[@]}" "$src" > "$tmpdir/$fname"
+done
+
+# Create amalgamation files to speed up compilation
+qbs_amalgamation="$tmpdir/qbs.cpp"
+for src in "${source_files[@]}"; do
+    echo "#include \"$src\"" >> "$qbs_amalgamation"
+done
+
+if [[ "$QT_MKSPEC" = *macx* ]]; then
+    qbs_amalgamation_objc="$tmpdir/qbs.mm"
+    for src in "${objc_source_files[@]}"; do
+        echo "#include \"$src\"" >> "$qbs_amalgamation_objc"
+    done
+fi
+
+# Build the bootstrap binary
+response_file=$tmpdir/resp
+for flag in "${cflags[@]}"; do echo "$flag" >> "$response_file"; done
+echo "$qbs_amalgamation" >> "$response_file"
+if [[ "$QT_MKSPEC" = *macx* ]]; then echo "$qbs_amalgamation_objc" >> "$response_file"; fi
+if which c++ > /dev/null; then
+    c++ "@$response_file" "${lflags[@]}"
+else
+    echo "error: no suitable compiler found in PATH" >&2
+    exit 1
+fi
+
+# Build the real qbs
+"$tmpdir/qbs" build -f qbs.qbs -d "$tmpdir" \
+    "qbs.buildVariant:$QBS_BUILD_VARIANT" "qbs.installRoot:$QBS_INSTALL_ROOT" \
+    "Qt.core.prefixPath:$QTDIR" "$@"

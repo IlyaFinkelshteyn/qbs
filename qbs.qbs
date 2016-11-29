@@ -27,6 +27,15 @@ Project {
         files: ["**/*.pr[io]"]
     }
 
+    Product {
+        name: "bootstrap"
+        files: [
+            "bootstrap",
+            "bootstrap.bat",
+            "bootstrap.ps1"
+        ]
+    }
+
     AutotestRunner {
         Depends { name: "Qt.core" }
         Depends { name: "qbs resources" }

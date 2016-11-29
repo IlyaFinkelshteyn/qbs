@@ -22,13 +22,22 @@ Prerequisites:
 
 The installed toolchains have to match the one Qt was compiled with.
 
-You can build Qbs with
+You can build Qbs with itself
 
     cd $SOURCE_DIRECTORY
-    qmake -r
-    make (or mingw32-make or nmake or jom, depending on your platform)
+    qbs
 
-Installation ("make install") is not needed. It is however possible, using
+or bootstrap using the provided bootstrapping script
 
-    make install INSTALL_ROOT=$INSTALL_DIRECTORY
+    # Unix
+    cd $SOURCE_DIRECTORY
+    ./bootstrap
 
+    # Windows
+    # Open a command prompt and ensure that a supported compiler can be found in the PATH
+    cd $SOURCE_DIRECTORY
+    bootstrap
+
+Installation is performed automatically. It is possible to control the installation directory using
+
+    qbs qbs.installRoot:$INSTALL_DIRECTORY -or- bootstrap qbs.installRoot:$INSTALL_DIRECTORY

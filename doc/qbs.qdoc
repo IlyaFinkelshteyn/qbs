@@ -131,23 +131,51 @@
     To build \QBS, enter the following command:
 
     \code
-        qmake -r qbs.pro && make
+        qbs -f qbs.qbs
+    \endcode
+
+    If you do not already have an existing \QBS installation,
+    bootstrap using the following command:
+
+    \code
+        ./bootstrap
+    \endcode
+
+    or for Windows:
+
+    \code
+        bootstrap
     \endcode
 
     \section1 Configure Options
 
-    \QBS recognizes the following qmake CONFIG options to customize the build:
+    \QBS and its bootstrapping script recognize the following properties to customize the build:
 
     \table
-    \header \li Option              \li Notes
-    \row    \li qbs_enable_unit_tests           \li Enable additional autotests.
-    \row    \li qbs_disable_rpath       \li Disable the use of rpath. This can be used when packaging
-                                        \QBS for distributions which do not permit the use of rpath,
-                                        such as Fedora.
-    \row    \li qbs_no_dev_install  \li Exclude header files from installation, that is, perform a
-                                        non-developer build.
-    \row    \li qbs_enable_project_file_updates \li Enable API for updating project files. This
-                                        implies a dependency to the Qt GUI module.
+        \header
+            \li Option
+            \li Notes
+            \li Default
+        \row
+            \li qbsbuildconfig.enableUnitTests
+            \li Enable additional autotests.
+            \li \c{false}
+        \row
+            \li qbsbuildconfig.enableRPath
+            \li Enable the use of rpath.
+                This can be used when packaging \QBS for distributions
+                which do not permit the use of rpath, such as Fedora.
+            \li \c{true}
+        \row
+            \li qbsbuildconfig.installApiHeaders
+            \li Include header files in the installation, that is,
+                perform a developer build.
+            \li \c{true}
+        \row
+            \li qbsbuildconfig.enableProjectFileUpdates
+            \li Enable API for updating project files.
+                This implies a dependency on the QtGui module.
+            \li \c{false}
     \endtable
 
 */
