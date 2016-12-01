@@ -46,7 +46,7 @@
 #include <tools/propertyfinder.h>
 #include <tools/qbsassert.h>
 
-#include <QDir>
+#include <QtCore/qdir.h>
 
 #include <algorithm>
 

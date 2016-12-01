@@ -43,7 +43,7 @@
 #include <set>
 #include <cstddef>
 
-#include <QSharedData>
+#include <QtCore/qshareddata.h>
 
 namespace qbs {
 namespace Internal {

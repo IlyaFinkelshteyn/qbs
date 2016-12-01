@@ -40,8 +40,8 @@
 #ifndef QBS_ARTIFACTSET_H
 #define QBS_ARTIFACTSET_H
 
-#include <QSet>
-#include <QStringList>
+#include <QtCore/qset.h>
+#include <QtCore/qstringlist.h>
 
 namespace qbs {
 namespace Internal {

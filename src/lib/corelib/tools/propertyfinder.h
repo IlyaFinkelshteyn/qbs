@@ -39,8 +39,7 @@
 #ifndef QBS_PROPERTY_FINDER_H
 #define QBS_PROPERTY_FINDER_H
 
-#include <QVariantList>
-#include <QVariantMap>
+#include <QtCore/qvariant.h>
 
 namespace qbs {
 namespace Internal {

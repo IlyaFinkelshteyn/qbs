@@ -52,8 +52,8 @@
 #include <tools/progressobserver.h>
 #include <tools/qbsassert.h>
 
-#include <QDir>
-#include <QFileInfo>
+#include <QtCore/qdir.h>
+#include <QtCore/qfileinfo.h>
 
 namespace qbs {
 namespace Internal {

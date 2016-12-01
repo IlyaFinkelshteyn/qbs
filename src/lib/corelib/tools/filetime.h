@@ -40,8 +40,8 @@
 #ifndef QBS_FILETIME_H
 #define QBS_FILETIME_H
 
-#include <QDataStream>
-#include <QDebug>
+#include <QtCore/qdatastream.h>
+#include <QtCore/qdebug.h>
 
 #if defined(Q_OS_UNIX)
 #include <time.h>

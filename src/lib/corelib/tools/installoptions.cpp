@@ -40,8 +40,8 @@
 #include "propertyfinder.h"
 #include "language/language.h"
 
-#include <QDir>
-#include <QSharedData>
+#include <QtCore/qdir.h>
+#include <QtCore/qshareddata.h>
 
 namespace qbs {
 namespace Internal {

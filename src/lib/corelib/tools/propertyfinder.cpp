@@ -40,7 +40,7 @@
 
 #include "qbsassert.h"
 
-#include <QStringList>
+#include <QtCore/qstringlist.h>
 
 namespace qbs {
 namespace Internal {

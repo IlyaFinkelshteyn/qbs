@@ -42,8 +42,8 @@
 
 #include <tools/codelocation.h>
 
-#include <QHash>
-#include <QStringList>
+#include <QtCore/qhash.h>
+#include <QtCore/qstringlist.h>
 
 namespace qbs {
 namespace Internal {

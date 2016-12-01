@@ -47,7 +47,7 @@
 #include <tools/error.h>
 #include <tools/propertyfinder.h>
 
-#include <QScriptEngine>
+#include <QtScript/qscriptengine.h>
 
 namespace qbs {
 namespace Internal {
