@@ -107,8 +107,6 @@ QbsLibrary {
             "buildgraphloader.cpp",
             "buildgraphloader.h",
             "buildgraphvisitor.h",
-            "command.cpp",
-            "command.h",
             "cycledetector.cpp",
             "cycledetector.h",
             "depscanner.cpp",
@@ -141,6 +139,8 @@ QbsLibrary {
             "qtmocscanner.h",
             "rescuableartifactdata.cpp",
             "rescuableartifactdata.h",
+            "rulecommands.cpp",
+            "rulecommands.h",
             "rulegraph.cpp",
             "rulegraph.h",
             "rulenode.cpp",
@@ -154,7 +154,7 @@ QbsLibrary {
             "timestampsupdater.cpp",
             "timestampsupdater.h",
             "transformer.cpp",
-            "transformer.h"
+            "transformer.h",
         ]
     }
     Group {

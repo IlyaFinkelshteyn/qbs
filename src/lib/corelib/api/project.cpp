@@ -51,7 +51,7 @@
 #include "runenvironment.h"
 #include <buildgraph/artifact.h>
 #include <buildgraph/buildgraph.h>
-#include <buildgraph/command.h>
+#include <buildgraph/rulecommands.h>
 #include <buildgraph/emptydirectoriesremover.h>
 #include <buildgraph/nodetreedumper.h>
 #include <buildgraph/productbuilddata.h>

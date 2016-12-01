@@ -39,7 +39,7 @@
 #include "productbuilddata.h"
 
 #include "artifact.h"
-#include "command.h"
+#include "rulecommands.h"
 #include "projectbuilddata.h"
 #include <language/language.h>
 #include <logging/logger.h>

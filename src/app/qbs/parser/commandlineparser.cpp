@@ -39,7 +39,7 @@
 
 #include "commandlineparser.h"
 
-#include "command.h"
+#include "parsercommand.h"
 #include "commandlineoption.h"
 #include "commandlineoptionpool.h"
 #include "commandpool.h"

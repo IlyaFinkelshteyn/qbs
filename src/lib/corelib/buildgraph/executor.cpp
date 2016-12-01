@@ -39,7 +39,7 @@
 #include "executor.h"
 
 #include "buildgraph.h"
-#include "command.h"
+#include "rulecommands.h"
 #include "emptydirectoriesremover.h"
 #include "productbuilddata.h"
 #include "projectbuilddata.h"

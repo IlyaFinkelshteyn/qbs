@@ -41,7 +41,7 @@
 #include "artifact.h"
 #include "artifactset.h"
 #include "buildgraph.h"
-#include "command.h"
+#include "rulecommands.h"
 #include "cycledetector.h"
 #include "emptydirectoriesremover.h"
 #include "productbuilddata.h"
