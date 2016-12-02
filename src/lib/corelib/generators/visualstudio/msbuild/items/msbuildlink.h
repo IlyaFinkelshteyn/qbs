@@ -39,7 +39,6 @@ class IMSBuildItemGroup;
 
 class MSBuildLink : public MSBuildItem
 {
-    Q_OBJECT
 public:
     explicit MSBuildLink(IMSBuildItemGroup *parent = 0);
 };

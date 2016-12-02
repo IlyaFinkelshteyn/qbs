@@ -111,7 +111,7 @@ MSBuildImportGroup *MSBuildTargetProject::propertySheetsImportGroup()
 {
     MSBuildImportGroup *importGroup = nullptr;
     for (const auto &child : children()) {
-        if (auto group = qobject_cast<MSBuildImportGroup *>(child)) {
+        if (auto group = dynamic_cast<MSBuildImportGroup *>(child)) {
             if (group->label() == QStringLiteral("PropertySheets")) {
                 importGroup = group;
                 break;

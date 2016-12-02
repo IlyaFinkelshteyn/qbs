@@ -46,7 +46,6 @@ class MSBuildImportGroupPrivate;
  */
 class MSBuildImportGroup : public IMSBuildGroup, public IMSBuildNode
 {
-    Q_OBJECT
     Q_DISABLE_COPY(MSBuildImportGroup)
 public:
     explicit MSBuildImportGroup(MSBuildProject *parent = 0);

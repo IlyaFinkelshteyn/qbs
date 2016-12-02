@@ -76,7 +76,6 @@ using DubiousContextList = std::vector<DubiousContext>;
 
 class ScriptEngine : public QScriptEngine
 {
-    Q_OBJECT
 public:
     ScriptEngine(Logger &logger, EvalContext evalContext, QObject *parent = 0);
     ~ScriptEngine();

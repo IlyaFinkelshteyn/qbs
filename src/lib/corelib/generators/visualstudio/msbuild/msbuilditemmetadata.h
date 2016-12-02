@@ -45,7 +45,6 @@ class MSBuildItem;
  */
 class MSBuildItemMetadata : public IMSBuildProperty, public IMSBuildNode
 {
-    Q_OBJECT
     Q_DISABLE_COPY(MSBuildItemMetadata)
 public:
     explicit MSBuildItemMetadata(MSBuildItem *parent = 0);

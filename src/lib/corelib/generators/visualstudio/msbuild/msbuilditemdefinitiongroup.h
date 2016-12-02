@@ -46,7 +46,6 @@ class MSBuildItemDefinitionGroupPrivate;
  */
 class MSBuildItemDefinitionGroup : public IMSBuildItemGroup, public IMSBuildNode
 {
-    Q_OBJECT
 public:
     explicit MSBuildItemDefinitionGroup(MSBuildProject *parent = 0);
     ~MSBuildItemDefinitionGroup();

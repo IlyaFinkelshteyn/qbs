@@ -66,7 +66,7 @@ void MSBuildItemGroup::accept(IMSBuildNodeVisitor *visitor) const
     visitor->visitStart(this);
 
     for (const auto &child : children()) {
-        if (const MSBuildItem *item = qobject_cast<MSBuildItem *>(child))
+        if (const MSBuildItem *item = dynamic_cast<MSBuildItem *>(child))
             item->accept(visitor);
     }
 

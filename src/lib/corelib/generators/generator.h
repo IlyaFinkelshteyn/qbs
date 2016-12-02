@@ -56,7 +56,6 @@ class ProjectGeneratorPrivate;
  */
 class QBS_EXPORT ProjectGenerator : public QObject
 {
-    Q_OBJECT
     Q_DISABLE_COPY(ProjectGenerator)
 public:
     virtual ~ProjectGenerator();

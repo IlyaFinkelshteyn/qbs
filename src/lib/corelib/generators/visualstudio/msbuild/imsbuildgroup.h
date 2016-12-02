@@ -41,7 +41,6 @@ class IMSBuildGroupPrivate;
 
 class IMSBuildGroup : public QObject
 {
-    Q_OBJECT
 public:
     explicit IMSBuildGroup(MSBuildProject *parent = 0);
     virtual ~IMSBuildGroup();
@@ -55,7 +54,6 @@ private:
 
 class IMSBuildItemGroup : public IMSBuildGroup
 {
-    Q_OBJECT
 public:
     explicit IMSBuildItemGroup(MSBuildProject *parent = 0);
 };

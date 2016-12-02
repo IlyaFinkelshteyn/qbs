@@ -48,7 +48,6 @@ class MSBuildItemPrivate;
  */
 class MSBuildItem : public QObject, public IMSBuildNode
 {
-    Q_OBJECT
 public:
     explicit MSBuildItem(const QString &name, IMSBuildItemGroup *parent = 0);
     virtual ~MSBuildItem();

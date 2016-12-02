@@ -46,7 +46,6 @@ class MSBuildProject;
  */
 class MSBuildImport : public QObject, public IMSBuildNode
 {
-    Q_OBJECT
     Q_DISABLE_COPY(MSBuildImport)
 public:
     explicit MSBuildImport(MSBuildProject *parent = 0);

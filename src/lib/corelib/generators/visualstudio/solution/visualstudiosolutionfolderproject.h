@@ -38,7 +38,6 @@ namespace qbs {
 
 class VisualStudioSolutionFolderProject : public IVisualStudioSolutionProject
 {
-    Q_OBJECT
 public:
     explicit VisualStudioSolutionFolderProject(QObject *parent);
 

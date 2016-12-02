@@ -40,7 +40,6 @@ class VisualStudioSolutionGlobalSectionPrivate;
 
 class VisualStudioSolutionGlobalSection : public QObject
 {
-    Q_OBJECT
     Q_DISABLE_COPY(VisualStudioSolutionGlobalSection)
 public:
     explicit VisualStudioSolutionGlobalSection(const QString &name, QObject *parent = 0);

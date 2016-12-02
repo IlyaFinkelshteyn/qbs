@@ -60,7 +60,6 @@ class Settings;
 
 class CommandLineFrontend : public QObject
 {
-    Q_OBJECT
 public:
     explicit CommandLineFrontend(const CommandLineParser &parser, Settings *settings,
                                  QObject *parent = 0);

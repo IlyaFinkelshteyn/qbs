@@ -49,7 +49,6 @@ namespace qbs {
 
 class QBS_EXPORT SettingsModel : public QAbstractItemModel
 {
-    Q_OBJECT
 public:
     SettingsModel(const QString &settingsDir, QObject *parent = 0);
     ~SettingsModel();

@@ -54,7 +54,7 @@ Application::Application(int &argc, char **argv)
 
 Application *Application::instance()
 {
-    return qobject_cast<Application *>(QCoreApplication::instance());
+    return static_cast<Application *>(QCoreApplication::instance());
 }
 
 void Application::setCommandLineFrontend(CommandLineFrontend *clFrontend)

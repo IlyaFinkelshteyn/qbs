@@ -47,7 +47,6 @@ class CommandLineFrontend;
 
 class Application : public QCoreApplication
 {
-    Q_OBJECT
 public:
     Application(int &argc, char **argv);
 

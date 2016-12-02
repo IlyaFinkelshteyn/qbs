@@ -40,7 +40,6 @@ namespace qbs {
 
 class MSBuildQbsGenerateProject : public MSBuildTargetProject
 {
-    Q_OBJECT
     Q_DISABLE_COPY(MSBuildQbsGenerateProject)
 public:
     MSBuildQbsGenerateProject(const GeneratableProject &project,

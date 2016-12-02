@@ -45,7 +45,6 @@ class MSBuildPropertyGroup;
  */
 class MSBuildProperty : public IMSBuildProperty, public IMSBuildNode
 {
-    Q_OBJECT
 public:
     explicit MSBuildProperty(MSBuildPropertyGroup *parent = 0);
     MSBuildProperty(const QString &name, const QVariant &value = QVariant(),

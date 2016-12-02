@@ -72,7 +72,7 @@ void MSBuildPropertyGroup::accept(IMSBuildNodeVisitor *visitor) const
     visitor->visitStart(this);
 
     for (const auto &child : children()) {
-        if (const MSBuildProperty *property = qobject_cast<MSBuildProperty *>(child))
+        if (const MSBuildProperty *property = dynamic_cast<MSBuildProperty *>(child))
             property->accept(visitor);
     }
 

@@ -45,7 +45,6 @@ class MSBuildProjectPrivate;
  */
 class MSBuildProject : public QObject, public IMSBuildNode
 {
-    Q_OBJECT
     Q_DISABLE_COPY(MSBuildProject)
 public:
     explicit MSBuildProject(QObject *parent = 0);

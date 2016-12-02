@@ -37,7 +37,6 @@ namespace qbs {
 
 class MSBuildClInclude : public MSBuildFileItem
 {
-    Q_OBJECT
     Q_DISABLE_COPY(MSBuildClInclude)
 public:
     explicit MSBuildClInclude(IMSBuildItemGroup *parent = 0);

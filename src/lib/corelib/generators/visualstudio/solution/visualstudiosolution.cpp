@@ -75,7 +75,7 @@ QList<VisualStudioSolutionFileProject *> VisualStudioSolution::fileProjects() co
 {
     QList<VisualStudioSolutionFileProject *> list;
     for (const auto &project : d->projects)
-        if (auto fileProject = qobject_cast<VisualStudioSolutionFileProject *>(project))
+        if (auto fileProject = dynamic_cast<VisualStudioSolutionFileProject *>(project))
             list.append(fileProject);
     return list;
 }
@@ -84,7 +84,7 @@ QList<VisualStudioSolutionFolderProject *> VisualStudioSolution::folderProjects(
 {
     QList<VisualStudioSolutionFolderProject *> list;
     for (const auto &project : d->projects)
-        if (auto folderProject = qobject_cast<VisualStudioSolutionFolderProject *>(project))
+        if (auto folderProject = dynamic_cast<VisualStudioSolutionFolderProject *>(project))
             list.append(folderProject);
     return list;
 }

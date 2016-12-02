@@ -49,7 +49,6 @@ class VisualStudioSolutionPrivate;
 
 class VisualStudioSolution : public QObject
 {
-    Q_OBJECT
     Q_DISABLE_COPY(VisualStudioSolution)
 public:
     explicit VisualStudioSolution(const Internal::VisualStudioVersionInfo &versionInfo,

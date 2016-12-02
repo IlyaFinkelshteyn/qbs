@@ -45,7 +45,6 @@ class VisualStudioGenerator;
 
 class MSBuildTargetProject : public MSBuildProject
 {
-    Q_OBJECT
     Q_DISABLE_COPY(MSBuildTargetProject)
 protected:
     MSBuildTargetProject(const GeneratableProject &project,

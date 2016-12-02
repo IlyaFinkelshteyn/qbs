@@ -49,7 +49,7 @@ void MSBuildItemDefinitionGroup::accept(IMSBuildNodeVisitor *visitor) const
     visitor->visitStart(this);
 
     for (const auto &child : children()) {
-        if (const auto item = qobject_cast<MSBuildItem *>(child))
+        if (const auto item = dynamic_cast<MSBuildItem *>(child))
             item->accept(visitor);
     }
 

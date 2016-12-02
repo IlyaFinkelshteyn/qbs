@@ -85,7 +85,7 @@ void MSBuildItem::accept(IMSBuildNodeVisitor *visitor) const
     visitor->visitStart(this);
 
     for (const auto &child : children()) {
-        if (MSBuildItemMetadata *itemMetadata = qobject_cast<MSBuildItemMetadata *>(child))
+        if (MSBuildItemMetadata *itemMetadata = dynamic_cast<MSBuildItemMetadata *>(child))
             itemMetadata->accept(visitor);
     }
 

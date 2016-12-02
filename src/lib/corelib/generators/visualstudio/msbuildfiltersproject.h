@@ -42,7 +42,6 @@ class MSBuildFilter;
 
 class MSBuildFiltersProject : public MSBuildProject
 {
-    Q_OBJECT
     Q_DISABLE_COPY(MSBuildFiltersProject)
 public:
     explicit MSBuildFiltersProject(const GeneratableProductData &product,

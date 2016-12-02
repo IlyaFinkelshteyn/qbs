@@ -40,7 +40,6 @@ class MSBuildFilterPrivate;
 
 class MSBuildFilter : public MSBuildItem
 {
-    Q_OBJECT
 public:
     explicit MSBuildFilter(IMSBuildItemGroup *parent = 0);
     MSBuildFilter(const QString &name, const QList<QString> &extensions,
