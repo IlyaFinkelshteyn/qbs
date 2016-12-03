@@ -23,11 +23,6 @@ Project {
     }
 
     Product {
-        name: "qmake project files for qbs"
-        files: ["**/*.pr[io]"]
-    }
-
-    Product {
         name: "bootstrap"
         files: [
             "bootstrap",

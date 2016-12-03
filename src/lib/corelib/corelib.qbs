@@ -440,15 +440,6 @@ QbsLibrary {
         ]
     }
     Group {
-        name: "use_installed.pri"
-        files: [
-            "use_installed_corelib.pri",
-            "../../../qbs_version.pri"
-        ]
-        qbs.install: qbsbuildconfig.installApiHeaders
-        qbs.installDir: headerInstallPrefix
-    }
-    Group {
         condition: qbsbuildconfig.enableUnitTests
         name: "tests"
         cpp.defines: outer.filter(function(def) { return def !== "QT_NO_CAST_FROM_ASCII"; })

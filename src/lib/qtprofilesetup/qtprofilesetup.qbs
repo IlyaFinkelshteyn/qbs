@@ -9,7 +9,6 @@ QbsLibrary {
         files: [
             "qtenvironment.h",
             "qtprofilesetup.h",
-            "use_installed_qtprofilesetup.pri",
         ]
         qbs.install: qbsbuildconfig.installApiHeaders
         qbs.installDir: headerInstallPrefix
