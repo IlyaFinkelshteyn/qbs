@@ -37,7 +37,7 @@
 **
 ****************************************************************************/
 
-#include "utilitiesextension.h"
+#include "jsextensions_p.h"
 
 #include <language/scriptengine.h>
 #include <logging/translator.h>
@@ -86,7 +86,7 @@ public:
     static QScriptValue js_versionCompare(QScriptContext *context, QScriptEngine *engine);
 };
 
-void initializeJsExtensionUtilities(QScriptValue extensionObject)
+static void initializeJsExtensionUtilities(QScriptValue extensionObject)
 {
     QScriptEngine *engine = extensionObject.engine();
     QScriptValue environmentObj = engine->newQMetaObject(&UtilitiesExtension::staticMetaObject,
@@ -115,6 +115,8 @@ void initializeJsExtensionUtilities(QScriptValue extensionObject)
                                engine->newFunction(UtilitiesExtension::js_versionCompare, 2));
     extensionObject.setProperty(QStringLiteral("Utilities"), environmentObj);
 }
+
+QBS_JSEXTENSION_REGISTER(Utilities, &initializeJsExtensionUtilities)
 
 QScriptValue UtilitiesExtension::js_ctor(QScriptContext *context, QScriptEngine *engine)
 {
