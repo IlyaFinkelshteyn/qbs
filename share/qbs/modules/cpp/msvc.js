@@ -261,19 +261,6 @@ function prepareLinker(project, product, inputs, outputs, input, output) {
     if (subsystemSwitch)
         args.push(subsystemSwitch);
 
-    var linkerOutputNativeFilePath;
-    var manifestFileName;
-    if (generateManifestFiles) {
-        linkerOutputNativeFilePath
-                = FileInfo.toWindowsSeparators(
-                    FileInfo.path(primaryOutput.filePath) + "/intermediate."
-                        + primaryOutput.fileName);
-        manifestFileName = linkerOutputNativeFilePath + ".manifest";
-        args.push('/MANIFEST', '/MANIFESTFILE:' + manifestFileName)
-    } else {
-        linkerOutputNativeFilePath = FileInfo.toWindowsSeparators(primaryOutput.filePath);
-    }
-
     var allInputs = (inputs.obj || []).concat(inputs.staticlibrary || [])
     if (inputs.dynamiclibrary_import)
         allInputs = allInputs.concat(inputs.dynamiclibrary_import);
@@ -306,6 +293,8 @@ function prepareLinker(project, product, inputs, outputs, input, output) {
     if (product.moduleProperty("cpp", "entryPoint"))
         args.push("/ENTRY:" + product.moduleProperty("cpp", "entryPoint"));
 
+    var linkerOutputNativeFilePath = FileInfo.toWindowsSeparators(
+                FileInfo.path(primaryOutput.filePath) + "/intermediate." + primaryOutput.fileName);
     args.push('/OUT:' + linkerOutputNativeFilePath)
     var libraryPaths = ModUtils.moduleProperty(product, 'libraryPaths');
     if (libraryPaths)
@@ -337,20 +326,29 @@ function prepareLinker(project, product, inputs, outputs, input, output) {
     };
     commands.push(cmd);
 
+    var outputNativeFilePath = FileInfo.toWindowsSeparators(primaryOutput.filePath);
+    cmd = new JavaScriptCommand();
+    cmd.src = linkerOutputNativeFilePath;
+    cmd.dst = outputNativeFilePath;
+    cmd.sourceCode = function() {
+        File.copy(src, dst);
+    }
+    cmd.silent = true
+    commands.push(cmd);
+
+    var manifestFiles = [];
     if (generateManifestFiles) {
-        var outputNativeFilePath = FileInfo.toWindowsSeparators(primaryOutput.filePath);
-        cmd = new JavaScriptCommand();
-        cmd.src = linkerOutputNativeFilePath;
-        cmd.dst = outputNativeFilePath;
-        cmd.sourceCode = function() {
-            File.copy(src, dst);
-        }
-        cmd.silent = true
-        commands.push(cmd);
-        args = [
-            '/nologo', '/manifest', manifestFileName,
-            "/outputresource:" + outputNativeFilePath + ";#" + (linkDLL ? "2" : "1")
-        ]
+        var manifestFileName = linkerOutputNativeFilePath + ".manifest";
+        args.push('/MANIFEST', '/MANIFESTFILE:' + manifestFileName);
+        manifestFiles.push(manifestFileName);
+    }
+
+    for (i in inputs["native.pe.manifest"])
+        manifestFiles.push(inputs["native.pe.manifest"][i].filePath);
+
+    if (manifestFiles.length) {
+        args = ['/nologo', '/manifest'].concat(manifestFiles);
+        args.push("/outputresource:" + outputNativeFilePath + ";#" + (linkDLL ? "2" : "1"));
         cmd = new Command("mt.exe", args)
         cmd.description = 'embedding manifest into ' + primaryOutput.fileName;
         cmd.highlight = 'linker';
