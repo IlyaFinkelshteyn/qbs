@@ -756,7 +756,6 @@ TopLevelProject *ResolvedProduct::topLevelProject() const
 
 QString ResolvedProduct::uniqueName(const QString &name, const QString &profile)
 {
-    QBS_CHECK(!profile.isEmpty());
     return name + QLatin1Char('.') + profile;
 }
 

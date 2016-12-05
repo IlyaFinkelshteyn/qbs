@@ -159,15 +159,12 @@ void CommandLineFrontend::start()
                 userConfig.insert(installRootKey, installRoot);
             }
             const QString configurationName = userConfig.take(configurationKey).toString();
-            QString profileName = userConfig.take(profileKey).toString();
-            if (profileName.isEmpty())
+
+            // Use QVariant::isValid so that an empty string given on the command line explicitly
+            // sets the null profile, overriding any default profile from settings
+            QVariant profileName = userConfig.take(profileKey);
+            if (!profileName.isValid())
                 profileName = m_settings->defaultProfile();
-            if (profileName.isEmpty()) {
-                ErrorInfo error(Tr::tr("No profile specified and no default profile exists."));
-                error.append(Tr::tr("To set a default profile, run "
-                                    "'qbs config defaultProfile <profile name>'."));
-                throw error;
-            }
             const Preferences prefs(m_settings);
 #ifndef QBS_BOOTSTRAPPED
             params.setSearchPaths(prefs.searchPaths(QDir::cleanPath(QCoreApplication::applicationDirPath()
@@ -179,9 +176,9 @@ void CommandLineFrontend::start()
 #else
             params.setSearchPaths(prefs.searchPaths(QDir::cleanPath(SRCDIR)));
 #endif
-            params.setTopLevelProfile(profileName);
+            params.setTopLevelProfile(profileName.toString());
             params.setConfigurationName(configurationName);
-            params.setBuildRoot(buildDirectory(profileName));
+            params.setBuildRoot(buildDirectory(profileName.toString()));
             params.setOverriddenValues(userConfig);
             SetupProjectJob * const job = Project().setupProject(params,
                     ConsoleLogger::instance().logSink(), this);
