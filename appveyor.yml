@@ -1,0 +1,113 @@
+version: '{build}'
+init:
+- cmd: >-
+    set PATH=%VCINSTALLDIR%;%MINGW%;%QTDIR%\bin;%ANDROID_HOME%\tools;%PATH%
+
+
+    if "%MAKE%"=="nmake" set msvc=true
+
+    if "%MAKE%"=="jom" set msvc=true
+
+    if defined msvc call vcvarsall.bat %ARCH%
+
+
+    REM Disable crash dialog for release-mode runtimes
+
+    reg add "HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting" /v DontShowUI /t REG_DWORD /d 1 /f
+
+
+    powershell iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+environment:
+  ANDROID_HOME: '%PROGRAMFILES(X86)%\Android\android-sdk'
+  ANDROID_NDK_ROOT: '%PROGRAMFILES(X86)%\Android\android-sdk\ndk-bundle'
+  matrix:
+  - QTDIR: C:\Qt\5.6\msvc2015
+    MAKE: nmake
+    ARCH: x86
+    VCINSTALLDIR: '%VS140COMNTOOLS%..\..\VC'
+  - QTDIR: C:\Qt\5.6\msvc2015_64
+    MAKE: nmake
+    ARCH: amd64
+    VCINSTALLDIR: '%VS140COMNTOOLS%..\..\VC'
+  - QTDIR: C:\Qt\5.6\mingw49_32
+    MAKE: mingw32-make
+    ARCH: x86
+    MINGW: C:\Qt\Tools\mingw492_32\bin
+install:
+- cmd: >-
+    choco install -y jom unzip nodejs typescript
+
+
+    REM Work around a strange issue where nodejs might hang
+
+    rmdir /S /Q "%PROGRAMFILES%\nodejs"
+
+
+    REM Work around broken clangdb test
+
+    REM rmdir /S /Q "%PROGRAMFILES%\LLVM"
+
+
+    REM if not exist "%ANDROID_HOME%" choco install -y android-sdk
+
+    REM android update sdk --no-ui --all --filter tool,platform-tool,build-tools-22.0.1,android-9,android-21 > android-sdk.log
+
+
+    REM appveyor DownloadFile "https://dl.google.com/android/repository/android-ndk-r12-windows-x86_64.zip"
+
+    REM unzip android-ndk-r12-windows-x86_64.zip
+
+    REM move android-ndk-r12 "%ANDROID_NDK_ROOT%"
+build_script:
+- cmd: >-
+    echo JSogLW8gJTFfcmVzdWx0cy54bWwseHVuaXR4bWwgLW8gLSx0eHQ= > tmp
+
+    certutil -decode tmp autotest.bat
+
+    type autotest.bat
+
+
+    qmake qbs.pro -r CONFIG+=qbs_enable_unit_tests CONFIG+=qbs_enable_project_file_updates
+
+    %MAKE%
+
+
+    bin\qbs setup-toolchains --detect
+
+    REM bin\qbs setup-android --sdk-dir "%ANDROID_HOME%" --ndk-dir "%ANDROID_NDK_ROOT%" android
+
+    bin\qbs setup-qt "%QTDIR%\bin\qmake.exe" qt
+
+    bin\qbs config profiles.qbs_autotests.baseProfile qt
+
+    REM bin\qbs config profiles.qbs_autotests-android.baseProfile android
+
+    bin\qbs config profiles.qbs_autotests-cli.qbs.toolchain dotnet
+
+    bin\qbs config profiles.qbs_autotests-cli.cli.fsharpCompilerPath "%PROGRAMFILES(X86)%\Microsoft SDKs\F#\4.0\Framework\v4.0\fsc.exe"
+
+    bin\qbs config --list
+
+
+    REM Test a self-hosted build
+
+    bin\qbs --all-products release profile:qt qbsbuildconfig.enableUnitTests:true qbsbuildconfig.enableProjectFileUpdates:true project.withExamples:false Qt.core.docPath:%QTDIR%\doc project.autotestWrapper:%CD%\autotest.bat
+test_script:
+- ps: >-
+    # upload results to AppVeyor
+
+    $wc = New-Object 'System.Net.WebClient'
+
+    Get-ChildItem -Filter *_results.xml -Recurse | ForEach-Object { $wc.UploadFile("https://ci.appveyor.com/api/testresults/xunit/$($env:APPVEYOR_JOB_ID)", $_.FullPath) }
+
+
+    #& $env:MAKE check
+artifacts:
+- path: release\qbs-windows-*.zip
+notifications:
+- provider: Email
+  to:
+  - jake.petroules@petroules.com
+  on_build_success: true
+  on_build_failure: true
+  on_build_status_changed: true
