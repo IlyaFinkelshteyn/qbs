@@ -99,7 +99,8 @@ test_script:
     $wc = New-Object 'System.Net.WebClient'
 
     Get-ChildItem -Filter *_results.xml -Recurse | ForEach-Object { $wc.UploadFile("https://ci.appveyor.com/api/testresults/xunit/$($env:APPVEYOR_JOB_ID)", $_.FullPath) }
-
+    
+    $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 
     #& $env:MAKE check
 artifacts:
